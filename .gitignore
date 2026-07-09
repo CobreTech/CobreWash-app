@@ -1,0 +1,33 @@
+*.iml
+.kotlin
+.gradle
+**/build/
+xcuserdata
+!src/**/build/
+local.properties
+.idea
+.DS_Store
+captures
+.externalNativeBuild
+.cxx
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcodeproj/project.xcworkspace/
+!*.xcworkspace/contents.xcworkspacedata
+**/xcshareddata/WorkspaceSettings.xcsettings
+node_modules/
+
+# Secretos / firma — NUNCA deben commitearse (higiene de seguridad)
+google-services.json
+GoogleService-Info.plist
+*.keystore
+*.jks
+keystore.properties
+secrets.properties
+*.p12
+
+# Claude Code / AI assistant — no debe subirse al repo
+.claude/
+CLAUDE.md
+.artifacts/

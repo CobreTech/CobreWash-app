@@ -1,0 +1,40 @@
+# Config de detekt afinada para Compose Multiplatform.
+# Se parte de la config por defecto (buildUponDefaultConfig = true en build.gradle.kts);
+# aquí solo van los ajustes específicos del paradigma Compose/KMP.
+
+complexity:
+  LongMethod:
+    # Los @Composable son largos por naturaleza (UI declarativa), pero un umbral
+    # más alto (no una exención en bloque) sigue detectando los genuinamente
+    # sobrecargados que deberían dividirse en sub-composables.
+    threshold: 100
+  LongParameterList:
+    # Firmas de UI con muchos slots/callbacks son normales en Compose.
+    ignoreAnnotated: ['Composable']
+  TooManyFunctions:
+    # Un archivo de pantalla agrupa varios @Composable privados.
+    ignoreAnnotatedFunctions: ['Composable']
+
+naming:
+  FunctionNaming:
+    # Los @Composable usan PascalCase por convención oficial de Compose.
+    ignoreAnnotated: ['Composable']
+  MatchingDeclarationName:
+    # Convención KMP: Platform.android.kt / Platform.ios.kt declaran AndroidPlatform / IOSPlatform.
+    excludes: ['**/Platform.*.kt']
+
+style:
+  MagicNumber:
+    # Desactivada: el código Compose usa muchos literales (dp, sp, 0xFF... de color)
+    # que son autoexplicativos y constituyen el diseño mismo; marcarlos es ruido.
+    active: false
+  NewLineAtEndOfFile:
+    active: true
+  MaxLineLength:
+    # 120 es estrecho para Compose (modifiers encadenados, args nombrados); 140 es lo habitual.
+    maxLineLength: 140
+  ReturnCount:
+    # Permite guard clauses (early returns de validación) — buen estilo, no complejidad.
+    excludeGuardClauses: true
+
+# El resto de reglas hereda la configuración por defecto de detekt.
