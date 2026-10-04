@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,6 +20,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -153,30 +157,35 @@ fun VehiculosScreen(
                 )
             }
 
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 32.dp, top = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                items(vehiculos, key = { it.id }) { vehiculo ->
-                    val chequeo = chequeoEnRuta(vehiculo.id)
-                    VehiculoCard(
-                        vehiculo = vehiculo,
-                        chequeo = chequeo,
-                        historial = historialVehiculo(vehiculo.id),
-                        panelChequeoAbierto = panelAbierto == vehiculo.id && !mostrandoHistorial,
-                        panelHistorialAbierto = panelAbierto == vehiculo.id && mostrandoHistorial,
-                        onToggleChequeo = { alternarPanel(vehiculo.id, historial = false) },
-                        onToggleHistorial = { alternarPanel(vehiculo.id, historial = true) },
-                        onConfirmar = { km, fotos, observaciones ->
-                            if (chequeo != null && chequeo.estaEnRuta) {
-                                onRegistrarEntrada(vehiculo.id, km, fotos, observaciones)
-                            } else {
-                                onRegistrarSalida(vehiculo.id, km, fotos, observaciones)
-                            }
-                            panelAbierto = null
-                        },
-                    )
+            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                val columnas = if (maxWidth >= 720.dp) GridCells.Adaptive(minSize = 340.dp) else GridCells.Fixed(1)
+                LazyVerticalGrid(
+                    columns = columnas,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 32.dp, top = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    items(vehiculos, key = { it.id }) { vehiculo ->
+                        val chequeo = chequeoEnRuta(vehiculo.id)
+                        VehiculoCard(
+                            vehiculo = vehiculo,
+                            chequeo = chequeo,
+                            historial = historialVehiculo(vehiculo.id),
+                            panelChequeoAbierto = panelAbierto == vehiculo.id && !mostrandoHistorial,
+                            panelHistorialAbierto = panelAbierto == vehiculo.id && mostrandoHistorial,
+                            onToggleChequeo = { alternarPanel(vehiculo.id, historial = false) },
+                            onToggleHistorial = { alternarPanel(vehiculo.id, historial = true) },
+                            onConfirmar = { km, fotos, observaciones ->
+                                if (chequeo != null && chequeo.estaEnRuta) {
+                                    onRegistrarEntrada(vehiculo.id, km, fotos, observaciones)
+                                } else {
+                                    onRegistrarSalida(vehiculo.id, km, fotos, observaciones)
+                                }
+                                panelAbierto = null
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -304,7 +313,7 @@ private fun TopBarAdmin(administrador: Administrador, onCerrarSesion: () -> Unit
         onCerrarSesion = onCerrarSesion,
     ) {
         Box(
-            modifier = Modifier.size(48.dp).background(BrandCtaGradient, RoundedCornerShape(14.dp)),
+            modifier = Modifier.size(40.dp).background(BrandCtaGradient, RoundedCornerShape(12.dp)),
             contentAlignment = Alignment.Center,
         ) {
             Icon(CobreIcons.Person, contentDescription = null, tint = Color.White, modifier = Modifier.size(26.dp))

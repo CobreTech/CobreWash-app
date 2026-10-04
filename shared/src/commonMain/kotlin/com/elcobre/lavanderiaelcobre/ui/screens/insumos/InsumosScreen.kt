@@ -79,6 +79,7 @@ fun InsumosScreen(
     insumos: List<Insumo>,
     alertas: List<AlertaStock>,
     onCrear: (Insumo, SeveridadStock, String) -> Unit,
+    applySystemBarsInsets: Boolean = true,
 ) {
     var insumoSel by remember { mutableStateOf<Insumo?>(null) }
     var severidad by remember { mutableStateOf(SeveridadStock.BAJO) }
@@ -94,7 +95,7 @@ fun InsumosScreen(
         }
     }
 
-    CobreBackground {
+    CobreBackground(applySystemBarsInsets = applySystemBarsInsets) {
         Column(
             modifier = Modifier
                 .fillMaxSize()

@@ -70,6 +70,7 @@ import com.elcobre.lavanderiaelcobre.ui.theme.ForegroundStone
 import com.elcobre.lavanderiaelcobre.ui.theme.Neutral50
 import com.elcobre.lavanderiaelcobre.ui.theme.Sky200
 import com.elcobre.lavanderiaelcobre.ui.theme.Sky500
+import com.elcobre.lavanderiaelcobre.ui.theme.Stone200
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusGreen
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusGreenDark
 import com.elcobre.lavanderiaelcobre.ui.theme.TextSecondaryLight
@@ -175,55 +176,48 @@ fun CobreBackdrop(modifier: Modifier = Modifier) {
 @Composable
 fun CobreBackground(
     modifier: Modifier = Modifier,
+    applySystemBarsInsets: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     Box(
         modifier = modifier
             .fillMaxSize()
-            .windowInsetsPadding(WindowInsets.systemBars),
+            .then(
+                if (applySystemBarsInsets) Modifier.windowInsetsPadding(WindowInsets.systemBars)
+                else Modifier,
+            ),
     ) {
         content()
     }
 }
 
-/** Tarjeta con efecto glassmorphism: fondo translúcido, borde fino y sombra con tinte de marca. */
+/**
+ * Superficie principal de la app, equivalente a las tarjetas de la intranet web.
+ * El vidrio y las sombras se mantienen deliberadamente sutiles: el color de marca
+ * queda reservado para estados y acciones, en vez de teñir cada bloque de contenido.
+ */
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
-    shape: RoundedCornerShape = RoundedCornerShape(16.dp), // rounded-2xl de la web, radio por defecto de sus tarjetas
+    shape: RoundedCornerShape = RoundedCornerShape(18.dp),
     contentPadding: PaddingValues = PaddingValues(20.dp),
-    elevation: Dp = 18.dp,
+    elevation: Dp = 8.dp,
     tint: Color = Brand500,
     stripe: Color? = null,
     content: @Composable () -> Unit,
 ) {
     val isDark = cobreIsDark()
 
-    // En oscuro, superficie sólida en vez de blanco translúcido: la translucidez
-    // hacía ver el modo oscuro lavado. remember evita reconstruir estos Brush en
-    // cada recomposición (relevante cuando hay varias GlassCard en una lista).
-    val bgColor = remember(isDark) {
-        if (isDark) {
-            Brush.verticalGradient(colors = listOf(Color(0xFF212127), DarkSurface1))
-        } else {
-            Brush.linearGradient(colors = listOf(Color.White, Neutral50.copy(alpha = 0.94f)))
-        }
-    }
-
-    val borderBrush = remember(isDark) {
-        if (isDark) {
-            Brush.verticalGradient(colors = listOf(Color.White.copy(alpha = 0.10f), DarkOutline.copy(alpha = 0.6f)))
-        } else {
-            Brush.linearGradient(colors = listOf(Color.White.copy(alpha = 0.95f), Color.White.copy(alpha = 0.4f)))
-        }
-    }
+    val bgColor = if (isDark) DarkSurface1.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.62f)
+    val borderColor = if (isDark) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.7f)
+    val innerHighlight = if (isDark) Color.White.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.75f)
 
     Box(
         modifier = modifier
             .shadow(
                 elevation = if (isDark) (elevation / 2f) else elevation,
                 shape = shape,
-                ambientColor = if (isDark) Color.Black else Brand700.copy(alpha = 0.08f),
+                ambientColor = if (isDark) Color.Black else Color.Black.copy(alpha = 0.02f),
                 spotColor = if (isDark) Color.Black else tint.copy(alpha = 0.14f),
             )
             .clip(shape)
@@ -231,13 +225,22 @@ fun GlassCard(
             .then(
                 if (stripe != null) {
                     Modifier.drawBehind {
-                        drawRect(color = stripe, size = Size(5.dp.toPx(), size.height))
+                        drawRect(color = stripe.copy(alpha = 0.9f), size = Size(3.dp.toPx(), size.height))
                     }
                 } else {
                     Modifier
                 },
             )
-            .border(width = if (isDark) 1.dp else 0.5.dp, brush = borderBrush, shape = shape)
+            .drawBehind {
+                // Inset highlight (simula inset 0 1px 0 rgba(...))
+                drawLine(
+                    color = innerHighlight,
+                    start = androidx.compose.ui.geometry.Offset(0f, 1f),
+                    end = androidx.compose.ui.geometry.Offset(size.width, 1f),
+                    strokeWidth = 2f
+                )
+            }
+            .border(width = 1.dp, color = borderColor, shape = shape)
             .padding(contentPadding),
     ) {
         content()
@@ -479,7 +482,7 @@ fun StatusChip(
         modifier = modifier
             .clip(RoundedCornerShape(50))
             .background(container)
-            .border(1.dp, content.copy(alpha = 0.35f), RoundedCornerShape(50))
+            .border(1.dp, content.copy(alpha = 0.1f), RoundedCornerShape(50))
             .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -519,7 +522,7 @@ fun SelectableChip(label: String, seleccionado: Boolean, onClick: () -> Unit) {
     val borde = when {
         seleccionado -> Color.Transparent
         isDark -> DarkOutline
-        else -> Brand200
+        else -> Stone200
     }
     Row(
         modifier = Modifier

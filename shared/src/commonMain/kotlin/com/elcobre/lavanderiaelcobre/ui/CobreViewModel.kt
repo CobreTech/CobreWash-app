@@ -61,10 +61,14 @@ class CobreViewModel : ViewModel() {
     var sesion by mutableStateOf<Sesion?>(null)
         private set
 
-    var modoTema by mutableStateOf(ModoTema.SISTEMA)
+    var modoTema by mutableStateOf(ModoTema.CLARO)
         private set
 
     fun cambiarModoTema(modo: ModoTema) { modoTema = modo }
+
+    fun alternarTema(esOscuroActual: Boolean) {
+        modoTema = if (esOscuroActual) ModoTema.CLARO else ModoTema.OSCURO
+    }
 
     // Pila de navegación real (no solo la pantalla actual): vive en el ViewModel para
     // sobrevivir a la recreación de la Activity en cambios de configuración, y permite
@@ -86,9 +90,10 @@ class CobreViewModel : ViewModel() {
         }
     }
 
-    /** Regresa al destino anterior real de la pila; no hace nada si ya está en la raíz. */
-    internal fun volver() {
+    val puedeVolver: Boolean get() = _backStack.size > 1
 
+    /** Regresa al destino ,anterior real de la pila; no hace nada si ya está en la raíz. */
+    internal fun volver() {
         if (_backStack.size > 1) _backStack.removeAt(_backStack.lastIndex)
     }
 

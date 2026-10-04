@@ -38,8 +38,11 @@ import com.elcobre.lavanderiaelcobre.ui.theme.cobreIsDark
 
 /** Feed de solo lectura de avisos de administración; destino de navegación propio del operario. */
 @Composable
-fun AvisosScreen(avisos: List<Aviso>) {
-    CobreBackground {
+fun AvisosScreen(
+    avisos: List<Aviso>,
+    applySystemBarsInsets: Boolean = true,
+) {
+    CobreBackground(applySystemBarsInsets = applySystemBarsInsets) {
         Column(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.padding(24.dp)) {
                 Text("Avisos", style = MaterialTheme.typography.headlineMedium, color = brandHeadingColor())

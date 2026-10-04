@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.kotlinSerialization)
 }
 
 kotlin {
@@ -37,6 +38,18 @@ kotlin {
     sourceSets {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
+            implementation(libs.androidx.activity.compose)
+            implementation(project.dependencies.platform(libs.firebase.bom))
+            implementation(libs.firebase.auth)
+            implementation(libs.firebase.dataconnect)
+            implementation(libs.kotlinx.coroutines.play.services)
+            implementation(libs.kotlinx.serialization.core)
+        }
+        getByName("androidMain") {
+            // SDK generado por `firebase dataconnect:sdk:generate` a partir de
+            // dataconnect/example/connector.yaml en CobreWash-web; solo tiene actual
+            // en Android (firebase-dataconnect no tiene SDK oficial para iOS aún).
+            kotlin.srcDir("dataconnect-generated")
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)

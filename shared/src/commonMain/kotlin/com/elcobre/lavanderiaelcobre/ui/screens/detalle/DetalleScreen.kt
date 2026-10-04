@@ -58,7 +58,9 @@ import com.elcobre.lavanderiaelcobre.ui.components.BrandCtaGradient
 import com.elcobre.lavanderiaelcobre.ui.components.CobreBackground
 import com.elcobre.lavanderiaelcobre.ui.components.CobreIcons
 import com.elcobre.lavanderiaelcobre.ui.components.EtapasTimeline
+import com.elcobre.lavanderiaelcobre.ui.components.FlujoProduccionCard
 import com.elcobre.lavanderiaelcobre.ui.components.GlassCard
+import com.elcobre.lavanderiaelcobre.ui.components.HistorialCard
 import com.elcobre.lavanderiaelcobre.ui.components.StageProgress
 import com.elcobre.lavanderiaelcobre.ui.components.StatusChip
 import com.elcobre.lavanderiaelcobre.ui.components.alertaColor
@@ -475,78 +477,7 @@ private fun BotonAlerta(tipo: TipoAlerta, onClick: () -> Unit, modifier: Modifie
     }
 }
 
-@Composable
-private fun HistorialCard(pedido: Pedido) {
-    GlassCard(modifier = Modifier.fillMaxWidth(), elevation = 8.dp) {
-        Column {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(CobreIcons.History, contentDescription = null, tint = brandHeadingColor(), modifier = Modifier.size(22.dp))
-                Text("Historial de avances y comentarios", style = MaterialTheme.typography.titleMedium, color = brandHeadingColor())
-            }
-            Spacer(Modifier.height(16.dp))
-            if (pedido.historial.isEmpty()) {
-                Text(
-                    "Sin eventos registrados todavía.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = brandMutedColor().copy(alpha = 0.85f),
-                )
-            }
-            pedido.historial.forEachIndexed { index, evento ->
-                EventoFila(
-                    tipo = evento.tipo,
-                    titulo = evento.titulo,
-                    detalle = evento.detalle,
-                    hora = evento.hora,
-                    autor = evento.autor,
-                    esUltimo = index == pedido.historial.size - 1,
-                )
-            }
-        }
-    }
-}
 
-@Composable
-private fun EventoFila(
-    tipo: TipoEvento,
-    titulo: String,
-    detalle: String,
-    hora: String,
-    autor: String,
-    esUltimo: Boolean,
-) {
-    val color = eventoColor(tipo)
-    Row(modifier = Modifier.fillMaxWidth()) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(color.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(eventoIcon(tipo), contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
-            }
-            if (!esUltimo) {
-                Box(
-                    modifier = Modifier
-                        .width(2.dp)
-                        .height(28.dp)
-                        .background(Brand700.copy(alpha = 0.12f)),
-                )
-            }
-        }
-        Spacer(Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f).padding(bottom = if (esUltimo) 0.dp else 14.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(titulo, style = MaterialTheme.typography.titleSmall, color = brandHeadingColor(), modifier = Modifier.weight(1f))
-                Text(hora, style = MaterialTheme.typography.labelSmall, color = brandMutedColor())
-            }
-            Spacer(Modifier.height(2.dp))
-            Text(detalle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f))
-            Text("· $autor", style = MaterialTheme.typography.labelSmall, color = brandMutedColor().copy(alpha = 0.85f))
-        }
-    }
-}
 
 @Composable
 private fun AlertaBanner(

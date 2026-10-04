@@ -1,0 +1,46 @@
+package com.elcobre.lavanderiaelcobre.data.auth
+
+import android.util.Log
+import com.elcobre.lavanderiaelcobre.dataconnect.ExampleConnector
+import com.elcobre.lavanderiaelcobre.dataconnect.instance
+import com.elcobre.lavanderiaelcobre.dataconnect.ref
+import com.google.firebase.dataconnect.DataConnectException
+import com.google.firebase.dataconnect.DataConnectOperationException
+import com.google.firebase.dataconnect.QueryRef
+
+private const val PERFIL_TAG = "PerfilRepository"
+
+private fun mensajePerfil(error: DataConnectException): String {
+    val detalle = error.message.orEmpty().lowercase()
+    return when {
+        "unauthenticated" in detalle || "unauthorized" in detalle ->
+            "No se pudo validar tu sesión. Vuelve a ingresar."
+        "operation" in detalle && "not found" in detalle ->
+            "El servicio de perfiles aún no está disponible. Actualiza la app o intenta más tarde."
+        else -> "No se pudo cargar tu perfil. Verifica tu conexión e intenta nuevamente."
+    }
+}
+
+actual class PerfilRepository actual constructor() {
+    actual suspend fun obtenerMiPerfil(): PerfilResultado = try {
+        val usuario = ExampleConnector.instance.getMiPerfil
+            .ref()
+            .execute(QueryRef.FetchPolicy.SERVER_ONLY)
+            .data
+            .usuario
+        when {
+            usuario == null -> PerfilResultado.Error("Tu cuenta no tiene un perfil asociado.")
+            !usuario.activo -> PerfilResultado.Error("Tu cuenta está inactiva.")
+            else -> PerfilResultado.Exito(nombre = usuario.nombre, rolNombre = usuario.rol.nombre)
+        }
+    } catch (error: DataConnectOperationException) {
+        Log.e(PERFIL_TAG, "GetMiPerfil fue rechazado por Data Connect", error)
+        PerfilResultado.Error(mensajePerfil(error))
+    } catch (error: DataConnectException) {
+        Log.e(PERFIL_TAG, "No fue posible consultar GetMiPerfil", error)
+        PerfilResultado.Error(mensajePerfil(error))
+    } catch (error: IllegalStateException) {
+        Log.e(PERFIL_TAG, "Firebase Data Connect no está inicializado correctamente", error)
+        PerfilResultado.Error("No se pudo iniciar el servicio de perfiles. Reinicia la app e intenta nuevamente.")
+    }
+}
