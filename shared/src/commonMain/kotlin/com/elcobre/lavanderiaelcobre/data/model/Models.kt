@@ -86,6 +86,13 @@ data class Pedido(
     val etapaActual: EtapaProceso,
     val alertaActiva: TipoAlerta? = null,
     val historial: List<EventoHistorial> = emptyList(),
+    // Referencias para la mutación en Firebase:
+    val etapaIdDb: String? = null,
+    val ordenEtapaDb: Int? = null,
+    val estadoComandaDb: String? = null,
+    val datosComanda: List<String> = emptyList(),
+    val prendas: List<String> = emptyList(),
+    val etapasDetalle: List<String> = emptyList(),
 ) {
     val estaBloqueado: Boolean get() = alertaActiva != null
     val flujo: List<EtapaProceso> get() = tipo.flujo
@@ -94,7 +101,12 @@ data class Pedido(
     val indiceEtapa: Int get() = flujo.indexOf(etapaActual).coerceAtLeast(0)
     val totalEtapas: Int get() = flujo.size
     val siguienteEtapa: EtapaProceso? get() = flujo.getOrNull(indiceEtapa + 1)
-    val esFinal: Boolean get() = siguienteEtapa == null
+    val esFinal: Boolean get() = if (estadoComandaDb != null) {
+        estadoComandaDb in setOf("ENTREGADA", "ANULADA")
+    } else siguienteEtapa == null
+    val puedeCompletar: Boolean get() = if (estadoComandaDb != null) {
+        !esFinal && etapaIdDb != null && ordenEtapaDb != null
+    } else siguienteEtapa != null
 
     /** Avanza a la etapa siguiente. Sin efecto si está bloqueado o ya es final. */
     fun avanzarEtapa(hora: String, autor: String, comentario: String?): Pedido {

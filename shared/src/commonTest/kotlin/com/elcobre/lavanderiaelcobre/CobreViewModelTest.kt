@@ -17,28 +17,35 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /** Tests de [CobreViewModel]: sesión, pila de navegación y mutaciones de pedidos/alertas. */
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class CobreViewModelTest {
+    private fun crearViewModel(): CobreViewModel {
+        val vm = CobreViewModel(FakeComandasRepository(),
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.test.UnconfinedTestDispatcher()))
+        vm.refrescarComandas()
+        return vm
+    }
 
     private val operario = Sesion.DeOperario(Operario("Test", "Operario", "Mañana"))
     private val administrador = Sesion.DeAdministrador(Administrador("Test Admin"))
 
     @Test
     fun iniciarSesion_operario_navegaADashboard() {
-        val vm = CobreViewModel()
+        val vm = crearViewModel()
         vm.iniciarSesion(operario)
         assertEquals(Pantalla.Dashboard, vm.pantalla)
     }
 
     @Test
     fun iniciarSesion_administrador_navegaAVehiculos() {
-        val vm = CobreViewModel()
+        val vm = crearViewModel()
         vm.iniciarSesion(administrador)
         assertEquals(Pantalla.Vehiculos, vm.pantalla)
     }
 
     @Test
     fun cerrarSesion_vuelveALogin() {
-        val vm = CobreViewModel()
+        val vm = crearViewModel()
         vm.iniciarSesion(operario)
         vm.cerrarSesion()
         assertEquals(Pantalla.Login, vm.pantalla)
@@ -47,7 +54,7 @@ class CobreViewModelTest {
 
     @Test
     fun navegar_aDestinoDeTab_reemplazaLaPilaEnVezDeApilar() {
-        val vm = CobreViewModel()
+        val vm = crearViewModel()
         vm.iniciarSesion(operario)
         vm.navegar(Pantalla.Avisos)
         vm.navegar(Pantalla.Insumos)
@@ -61,7 +68,7 @@ class CobreViewModelTest {
 
     @Test
     fun navegar_aDetalle_apilaYVolverRegresaAlDestinoAnteriorReal() {
-        val vm = CobreViewModel()
+        val vm = crearViewModel()
         vm.iniciarSesion(operario)
         vm.navegar(Pantalla.Avisos)
         vm.navegar(Pantalla.Detalle("P001"))
@@ -76,7 +83,7 @@ class CobreViewModelTest {
 
     @Test
     fun volver_enLaRaiz_noHaceNada() {
-        val vm = CobreViewModel()
+        val vm = crearViewModel()
         vm.iniciarSesion(operario)
         vm.volver()
         assertEquals(Pantalla.Dashboard, vm.pantalla)
@@ -84,14 +91,14 @@ class CobreViewModelTest {
 
     @Test
     fun pedido_existente_seEncuentraPorId() {
-        val vm = CobreViewModel()
+        val vm = crearViewModel()
         assertNotNull(vm.pedido("P001"))
         assertNull(vm.pedido("NO-EXISTE"))
     }
 
     @Test
     fun avanzarEtapa_actualizaSoloElPedidoAfectado() {
-        val vm = CobreViewModel()
+        val vm = crearViewModel()
         val etapaOriginalP003 = vm.pedido("P003")!!.etapaActual
 
         vm.avanzarEtapa("P003", "avance de prueba")
@@ -103,7 +110,7 @@ class CobreViewModelTest {
 
     @Test
     fun avanzarEtapa_conAlertaActiva_noAvanza() {
-        val vm = CobreViewModel()
+        val vm = crearViewModel()
         // P002 nace con una alerta INSUMO_CRITICO activa (ver MockData).
         val etapaOriginal = vm.pedido("P002")!!.etapaActual
 
@@ -114,7 +121,7 @@ class CobreViewModelTest {
 
     @Test
     fun registrarAlerta_yResolverAlerta_desbloqueanElPedido() {
-        val vm = CobreViewModel()
+        val vm = crearViewModel()
         vm.registrarAlerta("P001", TipoAlerta.RETRASO, "demora en lavado")
         assertTrue(vm.pedido("P001")!!.estaBloqueado)
 
@@ -124,7 +131,7 @@ class CobreViewModelTest {
 
     @Test
     fun crearAlertaStock_generaIdsMonotonicosSinColisionar() {
-        val vm = CobreViewModel()
+        val vm = crearViewModel()
         val previos = vm.alertasStock.size
 
         vm.crearAlertaStock(Insumo.CLORO, SeveridadStock.AGOTADO, "sin cloro")
@@ -137,7 +144,7 @@ class CobreViewModelTest {
 
     @Test
     fun pedidoPorComanda_buscaSinDistinguirMayusculas() {
-        val vm = CobreViewModel()
+        val vm = crearViewModel()
         assertNotNull(vm.pedidoPorComanda("cmd-1042"))
         assertNull(vm.pedidoPorComanda(""))
         assertNull(vm.pedidoPorComanda("no-existe"))
@@ -145,7 +152,7 @@ class CobreViewModelTest {
 
     @Test
     fun siguientePendiente_priorizaActivaSinBloqueo() {
-        val vm = CobreViewModel()
+        val vm = crearViewModel()
         val siguiente = vm.siguientePendiente()
         assertNotNull(siguiente)
         // No debe elegir P002 (bloqueada) ni P005 (ya finalizada) mientras haya otra opción.

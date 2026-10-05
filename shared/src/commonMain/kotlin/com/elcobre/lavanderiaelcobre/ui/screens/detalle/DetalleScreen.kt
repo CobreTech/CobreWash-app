@@ -97,6 +97,8 @@ fun DetalleScreen(
     onComentar: (texto: String) -> Unit,
     onAlerta: (tipo: TipoAlerta, comentario: String) -> Unit,
     onResolver: () -> Unit,
+    operacionPendiente: Boolean = false,
+    errorOperacion: String? = null,
     sharedScope: SharedTransitionScope? = null,
     animatedScope: AnimatedVisibilityScope? = null,
 ) {
@@ -117,7 +119,7 @@ fun DetalleScreen(
     // guantes en planta): se deshabilita al primer tap y se reactiva recién
     // cuando el pedido recompuesto refleja el cambio real.
     var accionEnCurso by remember { mutableStateOf(false) }
-    LaunchedEffect(pedido.etapaActual, pedido.estaBloqueado, pedido.historial.size) {
+    LaunchedEffect(pedido.etapaActual, pedido.estaBloqueado, pedido.historial.size, operacionPendiente, errorOperacion) {
         accionEnCurso = false
     }
 
@@ -138,6 +140,8 @@ fun DetalleScreen(
                 )
 
                 DetalleInfo(pedido = pedido)
+                DatosFirebase(pedido)
+                errorOperacion?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
                 StepperCard(pedido = pedido)
 
@@ -151,7 +155,7 @@ fun DetalleScreen(
                         onComentar(comentario)
                         comentario = ""
                     },
-                    alertaHabilitada = !pedido.estaBloqueado && !accionEnCurso,
+                    alertaHabilitada = !pedido.estaBloqueado && !accionEnCurso && !operacionPendiente,
                     onAlerta = { tipo ->
                         accionEnCurso = true
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -175,7 +179,7 @@ fun DetalleScreen(
 
             BottomActionBar(
                 pedido = pedido,
-                habilitado = !accionEnCurso,
+                habilitado = !accionEnCurso && !operacionPendiente,
                 onAvanzar = {
                     accionEnCurso = true
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -191,6 +195,19 @@ fun DetalleScreen(
                 },
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
+        }
+    }
+}
+
+@Composable
+private fun DatosFirebase(pedido: Pedido) {
+    if (pedido.datosComanda.isEmpty()) return
+    GlassCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Información operativa", style = MaterialTheme.typography.titleMedium)
+            pedido.datosComanda.forEach { Text(it, style = MaterialTheme.typography.bodyMedium) }
+            Text("Prendas", style = MaterialTheme.typography.titleMedium)
+            pedido.prendas.forEach { Text(it, style = MaterialTheme.typography.bodyMedium) }
         }
     }
 }
@@ -252,11 +269,14 @@ private fun DetalleInfo(pedido: Pedido) {
         Column {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 StatusChip(pedido.etapaActual.corto, etapa.container, etapa.content, icon = etapaIcon(pedido.etapaActual))
-                StatusChip("Prioridad ${pedido.prioridad.displayName}", prioridad.container, prioridad.content)
+                StatusChip(
+                    if (pedido.estadoComandaDb == null) "Prioridad ${pedido.prioridad.displayName}" else "Prioridad no definida",
+                    prioridad.container, prioridad.content,
+                )
             }
             Spacer(Modifier.height(10.dp))
             StatusChip(
-                pedido.tipo.displayName,
+                if (pedido.estadoComandaDb == null) pedido.tipo.displayName else "Comanda registrada",
                 tipoAccent.copy(alpha = if (isDark) 0.16f else 0.10f),
                 tipoAccent,
                 icon = tipoIcon(pedido.tipo),
@@ -418,11 +438,11 @@ private fun BottomActionBar(
                     )
                 }
             } else {
-                val avanzarBrush = if (siguiente != null) BrandCtaGradient
+                val avanzarBrush = if (pedido.puedeCompletar) BrandCtaGradient
                     else androidx.compose.ui.graphics.SolidColor(Brand500.copy(alpha = 0.35f))
                 Button(
                     onClick = onAvanzar,
-                    enabled = siguiente != null && habilitado,
+                    enabled = pedido.puedeCompletar && habilitado,
                     interactionSource = interaction,
                     modifier = Modifier.fillMaxWidth().height(56.dp).pressableScale(interaction)
                         .background(avanzarBrush, RoundedCornerShape(16.dp)),
@@ -441,7 +461,8 @@ private fun BottomActionBar(
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        if (siguiente != null) "Avanzar a ${siguiente.corto}" else "Proceso completado",
+                        if (siguiente != null) "Avanzar a ${siguiente.corto}"
+                        else if (pedido.puedeCompletar) "Marcar entregada" else "Proceso completado",
                         style = MaterialTheme.typography.labelLarge,
                         color = Color.White,
                         fontWeight = FontWeight.Bold,

@@ -66,6 +66,7 @@ import com.elcobre.lavanderiaelcobre.ui.screens.escaner.EscanerScreen
 import com.elcobre.lavanderiaelcobre.ui.screens.insumos.InsumosScreen
 import com.elcobre.lavanderiaelcobre.ui.screens.login.LoginScreen
 import com.elcobre.lavanderiaelcobre.ui.screens.vehiculos.VehiculosScreen
+import com.elcobre.lavanderiaelcobre.ui.theme.Brand400
 import com.elcobre.lavanderiaelcobre.ui.theme.Brand500
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 import com.elcobre.lavanderiaelcobre.ui.theme.ModoTema
@@ -80,6 +81,14 @@ import com.elcobre.lavanderiaelcobre.ui.theme.cobreIsDark
 @Composable
 fun CobreApp() {
     val vm: CobreViewModel = viewModel { CobreViewModel() }
+    LaunchedEffect(vm.sesion) {
+        if (vm.operario != null) {
+            while (true) {
+                kotlinx.coroutines.delay(30_000)
+                vm.refrescarComandas()
+            }
+        }
+    }
     val temaOscuro = when (vm.modoTema) {
         ModoTema.CLARO -> false
         ModoTema.OSCURO -> true
@@ -109,9 +118,9 @@ fun CobreApp() {
                         val isTopLevel = fun(p: Pantalla): Boolean = p in listOf(
                             Pantalla.Dashboard, Pantalla.Avisos, Pantalla.Insumos, Pantalla.Configuracion, Pantalla.Vehiculos
                         )
-                        
+
                         if (isTopLevel(initialState) && isTopLevel(targetState)) {
-                            // Entre tabs principales: crossfade suave sin slide. 
+                            // Entre tabs principales: crossfade suave sin slide.
                             // Esto hace que la Sidebar y la Topbar parezcan fijas y solo el contenido cambie.
                             fadeIn(tween(200)) togetherWith fadeOut(tween(200))
                         } else {
@@ -131,6 +140,19 @@ fun CobreApp() {
                         animatedScope = this,
                     )
                 }
+            }
+            vm.errorOperacion?.let { mensaje ->
+                Text(
+                    mensaje,
+                    modifier = Modifier.align(Alignment.TopCenter).padding(16.dp)
+                        .background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(12.dp)).padding(12.dp),
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                )
+            }
+            if (vm.cargando && vm.pedidos.isEmpty()) {
+                androidx.compose.material3.CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center), color = Brand400,
+                )
             }
         }
     }
@@ -203,10 +225,33 @@ private fun ConfiguracionDestino(destino: Pantalla, vm: CobreViewModel) {
 
 @Composable
 private fun EscanerDestino(vm: CobreViewModel) {
+    var pendingCallback by androidx.compose.runtime.remember {
+        androidx.compose.runtime.mutableStateOf<((String?) -> Unit)?>(null)
+    }
+
+    LaunchedEffect(vm.qrPendiente) {
+        val pendiente = vm.qrPendiente
+        if (pendiente != null) {
+            vm.procesarQrEscaneado(
+                codigoQr = pendiente,
+                onExito = { idInterno -> vm.navegar(Pantalla.Detalle(idInterno)) },
+                onError = { pendingCallback?.invoke("No encontramos esa comanda o hubo un error de red.") }
+            )
+        }
+    }
+
     EscanerScreen(
         onVolver = { vm.volver() },
-        escaneoSimulado = { vm.siguientePendiente() },
         buscarComanda = { codigo -> vm.pedidoPorComanda(codigo) },
+        buscarRemota = { codigo, onExito, onError -> vm.buscarNumero(codigo, onExito, onError) },
+        onEscanearQr = { uuid, onResult ->
+            pendingCallback = onResult
+            vm.procesarQrEscaneado(
+                codigoQr = uuid,
+                onExito = { idInterno -> vm.navegar(Pantalla.Detalle(idInterno)) },
+                onError = { onResult("No encontramos esa comanda. Verifica la red y vuelve a intentar.") }
+            )
+        },
         onAbrir = { pedido -> vm.navegar(Pantalla.Detalle(pedido.id)) },
     )
 }
@@ -249,18 +294,33 @@ private fun DetalleDestino(
     sharedScope: SharedTransitionScope,
     animatedScope: AnimatedVisibilityScope,
 ) {
-    val pedido = vm.pedido(destino.pedidoId)
-    if (pedido == null) {
-        LaunchedEffect(destino.pedidoId) { vm.volver() }
+    val currentPedido = vm.pedido(destino.pedidoId)
+    LaunchedEffect(destino.pedidoId) {
+        vm.cargarPedido(destino.pedidoId) {}
+    }
+    if (currentPedido == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            if (vm.cargando) androidx.compose.material3.CircularProgressIndicator(color = Brand400)
+            else Column {
+                Text(vm.errorOperacion ?: "Comanda no encontrada")
+                androidx.compose.material3.TextButton(onClick = { vm.cargarPedido(destino.pedidoId) {} }) {
+                    Text("Reintentar")
+                }
+                androidx.compose.material3.TextButton(onClick = { vm.volver() }) { Text("Volver") }
+            }
+        }
         return
     }
+
     DetalleScreen(
-        pedido = pedido,
+        pedido = currentPedido,
+        operacionPendiente = vm.cargando,
+        errorOperacion = vm.errorOperacion,
         onVolver = { vm.volver() },
-        onAvanzar = { comentario -> vm.avanzarEtapa(pedido.id, comentario) },
-        onComentar = { texto -> vm.agregarComentario(pedido.id, texto) },
-        onAlerta = { tipo, comentario -> vm.registrarAlerta(pedido.id, tipo, comentario) },
-        onResolver = { vm.resolverAlerta(pedido.id) },
+        onAvanzar = { comentario -> vm.avanzarEtapa(currentPedido.id, comentario) },
+        onComentar = { texto -> vm.agregarComentario(currentPedido.id, texto) },
+        onAlerta = { tipo, comentario -> vm.registrarAlerta(currentPedido.id, tipo, comentario) },
+        onResolver = { vm.resolverAlerta(currentPedido.id) },
         sharedScope = sharedScope,
         animatedScope = animatedScope,
     )
@@ -304,7 +364,7 @@ private fun OperarioScaffold(
                 animationSpec = tween(350, easing = androidx.compose.animation.core.FastOutSlowInEasing),
                 label = "mainSidebarWidth",
             )
-            
+
             Row(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
                 Box(
                     modifier = Modifier

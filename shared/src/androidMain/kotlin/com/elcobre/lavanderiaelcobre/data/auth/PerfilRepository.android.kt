@@ -7,6 +7,9 @@ import com.elcobre.lavanderiaelcobre.dataconnect.ref
 import com.google.firebase.dataconnect.DataConnectException
 import com.google.firebase.dataconnect.DataConnectOperationException
 import com.google.firebase.dataconnect.QueryRef
+import io.grpc.StatusException
+import io.grpc.StatusRuntimeException
+import kotlin.coroutines.cancellation.CancellationException
 
 private const val PERFIL_TAG = "PerfilRepository"
 
@@ -33,6 +36,14 @@ actual class PerfilRepository actual constructor() {
             !usuario.activo -> PerfilResultado.Error("Tu cuenta está inactiva.")
             else -> PerfilResultado.Exito(nombre = usuario.nombre, rolNombre = usuario.rol.nombre)
         }
+    } catch (error: CancellationException) {
+        throw error
+    } catch (error: StatusException) {
+        Log.e(PERFIL_TAG, "No fue posible consultar GetMiPerfil", error)
+        PerfilResultado.Error("No se pudo cargar tu perfil. Verifica tu conexión e intenta nuevamente.")
+    } catch (error: StatusRuntimeException) {
+        Log.e(PERFIL_TAG, "No fue posible consultar GetMiPerfil", error)
+        PerfilResultado.Error("No se pudo cargar tu perfil. Verifica tu conexión e intenta nuevamente.")
     } catch (error: DataConnectOperationException) {
         Log.e(PERFIL_TAG, "GetMiPerfil fue rechazado por Data Connect", error)
         PerfilResultado.Error(mensajePerfil(error))

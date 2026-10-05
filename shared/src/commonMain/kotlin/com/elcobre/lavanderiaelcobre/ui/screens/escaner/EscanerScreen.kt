@@ -69,21 +69,28 @@ import com.elcobre.lavanderiaelcobre.ui.theme.StatusRed
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusRedDark
 import com.elcobre.lavanderiaelcobre.ui.theme.cobreIsDark
 
-/**
- * Escaneo de la comanda por su código QR (RF-SP02 / RF-SP09). El prototipo no
- * accede a la cámara: ofrece un escáner simulado (animación + botón que abre la
- * siguiente comanda pendiente) y, como respaldo, la entrada manual del código.
- */
+import com.elcobre.lavanderiaelcobre.ui.components.QrScannerView
+
+/** Escáner real de comandas con búsqueda manual de respaldo. */
 @Composable
 fun EscanerScreen(
     onVolver: () -> Unit,
-    escaneoSimulado: () -> Pedido?,
     buscarComanda: (String) -> Pedido?,
+    buscarRemota: (String, (Pedido) -> Unit, () -> Unit) -> Unit,
+    onEscanearQr: (String, onResult: (errorMsg: String?) -> Unit) -> Unit,
     onAbrir: (Pedido) -> Unit,
 ) {
     var codigo by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
+    var isScanning by remember { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
+
+    // Cooldown para evitar que, al volver de Detalle, la cámara vuelva a atrapar el QR
+    // a la velocidad de la luz y te mande de regreso sin dejarte respirar.
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(1200)
+        isScanning = true
+    }
 
     CobreBackground {
         Column(
@@ -99,34 +106,39 @@ fun EscanerScreen(
                 onVolver = onVolver,
             )
 
-            VisorEscaner()
-
-            Button(
-                onClick = {
-                    val pedido = escaneoSimulado()
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    if (pedido != null) {
-                        onAbrir(pedido)
-                    } else {
-                        error = "No hay comandas pendientes para escanear."
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp)
-                    .background(BrandCtaGradient, RoundedCornerShape(16.dp)),
-                shape = RoundedCornerShape(16.dp),
-                elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+            GlassCard(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(16.dp),
+                elevation = 14.dp,
             ) {
-                Icon(CobreIcons.QrCodeScanner, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    "Simular escaneo",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color.Black.copy(alpha = 0.5f))
+                ) {
+                    QrScannerView(
+                        modifier = Modifier.fillMaxSize(),
+                        isActive = isScanning,
+                        onQrCodeScanned = { rawUrl ->
+                            val uuid = extraerCodigoQr(rawUrl)
+                            if (uuid != null) {
+                                isScanning = false // Pausar escáner
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                error = "Buscando comanda en la base de datos..." // Estado de carga (feedback)
+                                onEscanearQr(uuid) { errorMsg ->
+                                    if (errorMsg != null) {
+                                        error = errorMsg
+                                        isScanning = true // Reanudar escaneo si falló
+                                    }
+                                }
+                            } else {
+                                error = "Código QR inválido. Escanea el comprobante oficial."
+                            }
+                        }
+                    )
+                }
             }
 
             EntradaManual(
@@ -139,8 +151,7 @@ fun EscanerScreen(
                         codigo = ""
                         onAbrir(pedido)
                     } else {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        error = "No se encontró la comanda \"${codigo.trim()}\"."
+                        buscarRemota(codigo, onAbrir) { error = "No se encontró la comanda o no se pudo consultar." }
                     }
                 },
             )
@@ -159,62 +170,6 @@ fun EscanerScreen(
                     Text(error.orEmpty(), style = MaterialTheme.typography.bodySmall, color = rojo)
                 }
             }
-        }
-    }
-}
-
-/** Marco del "visor" con esquinas de mira y una línea de escaneo que sube y baja. */
-@Composable
-private fun VisorEscaner() {
-    val isDark = cobreIsDark()
-    val transicion = rememberInfiniteTransition(label = "escaner")
-    val progreso by transicion.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(1600), repeatMode = RepeatMode.Reverse),
-        label = "linea",
-    )
-    GlassCard(
-        modifier = Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(24.dp),
-        elevation = 14.dp,
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(if (isDark) Color.Black.copy(alpha = 0.35f) else Brand500.copy(alpha = 0.06f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    CobreIcons.QrCodeScanner,
-                    contentDescription = null,
-                    tint = (if (isDark) Brand400 else Brand500).copy(alpha = 0.28f),
-                    modifier = Modifier.size(120.dp),
-                )
-                // Línea de escaneo animada.
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(0.82f)
-                        .height(3.dp)
-                        .graphicsLayer { translationY = (progreso - 0.5f) * 360f }
-                        .clip(RoundedCornerShape(50))
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(Color.Transparent, if (isDark) Brand400 else Copper600, Color.Transparent),
-                            ),
-                        ),
-                )
-            }
-            Spacer(Modifier.height(14.dp))
-            Text(
-                "Buscando código de comanda…",
-                style = MaterialTheme.typography.bodyMedium,
-                color = brandMutedColor(),
-                fontWeight = FontWeight.SemiBold,
-            )
         }
     }
 }
@@ -239,7 +194,7 @@ private fun EntradaManual(
                 value = codigo,
                 onValueChange = onCodigoChange,
                 label = { Text("Código de comanda") },
-                placeholder = { Text("Ej. CMD-1042") },
+                placeholder = { Text("Ej. ELCOBRE-14r3") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),

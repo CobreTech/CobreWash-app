@@ -551,7 +551,7 @@ private fun TabletDetailHeader(
                 icon = etapaIcon(pedido.etapaActual),
             )
             StatusChip(
-                label = "Prioridad ${pedido.prioridad.displayName}",
+                label = if (pedido.estadoComandaDb == null) "Prioridad ${pedido.prioridad.displayName}" else "Prioridad no definida",
                 container = prioridad.container,
                 content = prioridad.content,
             )
@@ -887,7 +887,7 @@ private fun PedidoCardChips(pedido: Pedido, etapa: ChipColors, prioridad: ChipCo
             icon = etapaIcon(pedido.etapaActual),
         )
         StatusChip(
-            label = "Prioridad ${pedido.prioridad.displayName}",
+            label = if (pedido.estadoComandaDb == null) "Prioridad ${pedido.prioridad.displayName}" else "Prioridad no definida",
             container = prioridad.container,
             content = prioridad.content,
         )

@@ -6,6 +6,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.CoroutineScope
+import com.elcobre.lavanderiaelcobre.data.ComandasRepository
+import com.elcobre.lavanderiaelcobre.data.FirebaseComandasRepository
+import com.elcobre.lavanderiaelcobre.data.OperacionComandaException
 import com.elcobre.lavanderiaelcobre.data.mock.MockData
 import com.elcobre.lavanderiaelcobre.data.mock.RelojMock
 import com.elcobre.lavanderiaelcobre.data.model.Administrador
@@ -38,10 +45,20 @@ private val TABS: Set<Pantalla> = setOf(
  * copia actualizada en cada operación.
  */
 @Suppress("TooManyFunctions")
-class CobreViewModel : ViewModel() {
+class CobreViewModel(
+    private val repository: ComandasRepository = FirebaseComandasRepository(),
+    private val scopeOverride: CoroutineScope? = null,
+) : ViewModel() {
+    private val scope get() = scopeOverride ?: viewModelScope
+    var errorOperacion by mutableStateOf<String?>(null)
+        private set
+    var cargando by mutableStateOf(false)
+        private set
+    private var generacion = 0
+    private var revision = 0
+    private val operaciones = mutableSetOf<String>()
 
-    private val _pedidos: SnapshotStateList<Pedido> =
-        mutableStateListOf<Pedido>().apply { addAll(MockData.pedidosIniciales()) }
+    private val _pedidos: SnapshotStateList<Pedido> = mutableStateListOf()
 
     val pedidos: List<Pedido> get() = _pedidos
 
@@ -59,6 +76,9 @@ class CobreViewModel : ViewModel() {
     private var alertaStockContador = _alertasStock.size
 
     var sesion by mutableStateOf<Sesion?>(null)
+        private set
+
+    var qrPendiente by mutableStateOf<String?>(null)
         private set
 
     var modoTema by mutableStateOf(ModoTema.CLARO)
@@ -98,16 +118,67 @@ class CobreViewModel : ViewModel() {
     }
 
     fun iniciarSesion(s: Sesion) {
+        generacion++
+        scope.coroutineContext.cancelChildren()
+        operaciones.clear()
+        _pedidos.clear()
         sesion = s
+
         val destino = when (s) {
-            is Sesion.DeOperario -> Pantalla.Dashboard
+            is Sesion.DeOperario -> {
+                refrescarComandas()
+                Pantalla.Dashboard
+            }
             is Sesion.DeAdministrador -> Pantalla.Vehiculos
         }
+
         _backStack.clear()
         _backStack.add(destino)
+
+        if (qrPendiente != null) {
+            _backStack.add(Pantalla.Escaner)
+        }
+    }
+
+    fun procesarQrEscaneado(codigoQr: String, onExito: (String) -> Unit, onError: () -> Unit) {
+        if (sesion == null) {
+            qrPendiente = codigoQr
+            navegar(Pantalla.Login)
+        } else {
+            qrPendiente = null
+            ejecutar("qr", onError) {
+                revision++
+                if (operario == null) throw OperacionComandaException("Solo operarios pueden asignarse comandas por QR.")
+                val pedidoNube = repository.escanear(codigoQr)
+                    ?: throw OperacionComandaException("No se encontró la comanda.")
+                actualizarPedido(pedidoNube)
+                onExito(pedidoNube.id)
+            }
+        }
+    }
+
+    fun cargarPedido(id: String, onResult: (Pedido?) -> Unit) {
+        val existente = pedido(id)
+        if (existente != null) {
+            onResult(existente)
+            return
+        }
+        ejecutar("detalle:$id", { onResult(null) }) {
+            val desdeNube = repository.detalle(id)
+            desdeNube?.let(::actualizarPedido)
+            onResult(desdeNube)
+        }
     }
 
     fun cerrarSesion() {
+        generacion++
+        scope.coroutineContext.cancelChildren()
+        repository.cerrarSesion()
+        _pedidos.clear()
+        operaciones.clear()
+        errorOperacion = null
+        cargando = false
+        qrPendiente = null
         sesion = null
         _backStack.clear()
         _backStack.add(Pantalla.Login)
@@ -115,17 +186,82 @@ class CobreViewModel : ViewModel() {
 
     fun pedido(id: String): Pedido? = _pedidos.firstOrNull { it.id == id }
 
-    fun avanzarEtapa(id: String, comentario: String) =
-        _pedidos.reemplazarPrimero({ it.id == id }) { it.avanzarEtapa(RelojMock.ahora(), autor(), comentario) }
+    fun avanzarEtapa(id: String, comentario: String) {
+        val i = _pedidos.indexOfFirst { it.id == id }
+        if (i == -1) return
+        val pedido = _pedidos[i]
 
-    fun agregarComentario(id: String, texto: String) =
-        _pedidos.reemplazarPrimero({ it.id == id }) { it.agregarComentario(texto, RelojMock.ahora(), autor()) }
+        if (pedido.estaBloqueado) return
+        ejecutar("avance:$id") {
+            revision++
+            repository.avanzar(pedido)
+            val actualizado = repository.detalle(id)
+                ?: throw OperacionComandaException("El avance se guardó, pero no se pudo cargar el detalle.")
+            actualizarPedido(actualizado)
+            if (comentario.isNotBlank()) {
+                repository.comentar(id, comentario)
+                repository.detalle(id)?.let(::actualizarPedido)
+            }
+        }
+    }
+
+    fun refrescarComandas() = ejecutar("lista") {
+        val antes = revision
+        val remotas = repository.asignadas()
+        if (antes == revision) {
+            val abierto = (pantalla as? Pantalla.Detalle)?.pedidoId?.let(::pedido)
+            _pedidos.clear()
+            _pedidos.addAll(remotas)
+            if (abierto != null && remotas.none { it.id == abierto.id }) _pedidos.add(abierto)
+        }
+    }
+
+    fun buscarNumero(numero: String, onExito: (Pedido) -> Unit, onError: () -> Unit) = ejecutar("buscar", onError) {
+        val encontrado = repository.buscarNumero(numero)
+            ?: throw OperacionComandaException("No se encontró la comanda.")
+        actualizarPedido(encontrado)
+        onExito(encontrado)
+    }
+
+    private fun actualizarPedido(pedido: Pedido) {
+        val indice = _pedidos.indexOfFirst { it.id == pedido.id }
+        if (indice >= 0) _pedidos[indice] = pedido else _pedidos.add(0, pedido)
+    }
+
+    private fun ejecutar(clave: String, onError: () -> Unit = {}, accion: suspend () -> Unit) {
+        if (!operaciones.add(clave)) return
+        val inicio = generacion
+        cargando = true
+        errorOperacion = null
+        scope.launch {
+            try {
+                accion()
+            } catch (error: OperacionComandaException) {
+                if (inicio == generacion) {
+                    errorOperacion = error.message
+                    onError()
+                }
+            } finally {
+                if (inicio == generacion) {
+                    operaciones.remove(clave)
+                    cargando = operaciones.isNotEmpty()
+                }
+            }
+        }
+    }
+
+    fun agregarComentario(id: String, texto: String) = mutarPedido(id) { repository.comentar(id, texto) }
 
     fun registrarAlerta(id: String, tipo: TipoAlerta, comentario: String) =
-        _pedidos.reemplazarPrimero({ it.id == id }) { it.registrarAlerta(tipo, comentario, RelojMock.ahora(), autor()) }
+        mutarPedido(id) { repository.alertar(id, tipo.displayName, comentario) }
 
-    fun resolverAlerta(id: String) =
-        _pedidos.reemplazarPrimero({ it.id == id }) { it.resolverAlerta(RelojMock.ahora(), autor()) }
+    fun resolverAlerta(id: String) = mutarPedido(id) { pedido(id)?.let { repository.resolver(it) } }
+
+    private fun mutarPedido(id: String, accion: suspend () -> Unit) = ejecutar("mutacion:$id") {
+        revision++
+        accion()
+        repository.detalle(id)?.let(::actualizarPedido)
+    }
 
     /** RF-AN05: inserta al frente (más reciente primero). */
     fun crearAlertaStock(insumo: Insumo, severidad: SeveridadStock, nota: String) {
