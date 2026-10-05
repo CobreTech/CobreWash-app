@@ -186,7 +186,7 @@ sealed interface Sesion {
     data class DeAdministrador(val administrador: Administrador) : Sesion
 }
 
-/** Aviso publicado por la administración hacia el personal operativo (RF-AN04 / RF-CI); solo lectura en el prototipo. */
+/** Comunicado de administración visible para su equipo destinatario. */
 data class Aviso(
     val id: String,
     val titulo: String,
@@ -194,6 +194,7 @@ data class Aviso(
     val hora: String,
     val dirigidoA: String,
     val destacado: Boolean = false,
+    val autor: String = "",
 )
 
 /** Insumo del catálogo de lavandería, reportable por el operario cuando escasea (RF-AN05 / RF-IN). */

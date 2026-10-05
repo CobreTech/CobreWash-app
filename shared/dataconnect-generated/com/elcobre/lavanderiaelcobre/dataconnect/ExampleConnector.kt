@@ -45,6 +45,8 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
   
     public val configurarLimitesEtapas: ConfigurarLimitesEtapasMutation
   
+    public val crearAviso: CrearAvisoMutation
+  
     public val crearClienteAdministrado: CrearClienteAdministradoMutation
   
     public val crearClienteComanda: CrearClienteComandaMutation
@@ -72,6 +74,10 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
     public val eliminarDetallesComanda: EliminarDetallesComandaMutation
   
     public val entregarComanda: EntregarComandaMutation
+  
+    public val getAvisosAdministracion: GetAvisosAdministracionQuery
+  
+    public val getAvisosParaEquipo: GetAvisosParaEquipoQuery
   
     public val getCatalogosComanda: GetCatalogosComandaQuery
   
@@ -236,6 +242,10 @@ private class ExampleConnectorImpl(
       ConfigurarLimitesEtapasMutationImpl(this)
     }
   
+    override val crearAviso by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      CrearAvisoMutationImpl(this)
+    }
+  
     override val crearClienteAdministrado by lazy(LazyThreadSafetyMode.PUBLICATION) {
       CrearClienteAdministradoMutationImpl(this)
     }
@@ -290,6 +300,14 @@ private class ExampleConnectorImpl(
   
     override val entregarComanda by lazy(LazyThreadSafetyMode.PUBLICATION) {
       EntregarComandaMutationImpl(this)
+    }
+  
+    override val getAvisosAdministracion by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GetAvisosAdministracionQueryImpl(this)
+    }
+  
+    override val getAvisosParaEquipo by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GetAvisosParaEquipoQueryImpl(this)
     }
   
     override val getCatalogosComanda by lazy(LazyThreadSafetyMode.PUBLICATION) {
@@ -449,6 +467,7 @@ private class ExampleConnectorImpl(
         completarEtapaComanda,
         configurarEtapaProduccion,
         configurarLimitesEtapas,
+        crearAviso,
         crearClienteAdministrado,
         crearClienteComanda,
         crearComanda,
@@ -479,6 +498,8 @@ private class ExampleConnectorImpl(
   override fun queries(): List<com.google.firebase.dataconnect.generated.GeneratedQuery<ExampleConnector, *, *>> =
     listOf(
       diagnosticoComandas,
+        getAvisosAdministracion,
+        getAvisosParaEquipo,
         getCatalogosComanda,
         getComandaDetalle,
         getComandaDetalleOperario,
@@ -833,6 +854,21 @@ private class ConfigurarLimitesEtapasMutationImpl(
   )
 
 
+private class CrearAvisoMutationImpl(
+  connector: ExampleConnector
+):
+  CrearAvisoMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      CrearAvisoMutation.Data,
+      CrearAvisoMutation.Variables
+  >(
+    connector,
+    CrearAvisoMutation.Companion.operationName,
+    CrearAvisoMutation.Companion.dataDeserializer,
+    CrearAvisoMutation.Companion.variablesSerializer,
+  )
+
+
 private class CrearClienteAdministradoMutationImpl(
   connector: ExampleConnector
 ):
@@ -1040,6 +1076,36 @@ private class EntregarComandaMutationImpl(
     EntregarComandaMutation.Companion.operationName,
     EntregarComandaMutation.Companion.dataDeserializer,
     EntregarComandaMutation.Companion.variablesSerializer,
+  )
+
+
+private class GetAvisosAdministracionQueryImpl(
+  connector: ExampleConnector
+):
+  GetAvisosAdministracionQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      GetAvisosAdministracionQuery.Data,
+      GetAvisosAdministracionQuery.Variables
+  >(
+    connector,
+    GetAvisosAdministracionQuery.Companion.operationName,
+    GetAvisosAdministracionQuery.Companion.dataDeserializer,
+    GetAvisosAdministracionQuery.Companion.variablesSerializer,
+  )
+
+
+private class GetAvisosParaEquipoQueryImpl(
+  connector: ExampleConnector
+):
+  GetAvisosParaEquipoQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      GetAvisosParaEquipoQuery.Data,
+      GetAvisosParaEquipoQuery.Variables
+  >(
+    connector,
+    GetAvisosParaEquipoQuery.Companion.operationName,
+    GetAvisosParaEquipoQuery.Companion.dataDeserializer,
+    GetAvisosParaEquipoQuery.Companion.variablesSerializer,
   )
 
 

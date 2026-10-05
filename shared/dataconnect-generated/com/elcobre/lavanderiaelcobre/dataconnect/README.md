@@ -80,9 +80,9 @@ val connector: ExampleConnector = ExampleConnector.getInstance(
 ### ExampleConnector - Query and Mutation Properties
 
 The `example` Data Connect connector defines
-25 queries and
-36 mutations,
-a total of 61 operations.
+27 queries and
+37 mutations,
+a total of 64 operations.
 Each of these operations is exposed
 as a property of [ExampleConnector].
 
@@ -189,14 +189,14 @@ println("DiagnosticoComandas query returned: ${queryResult.data}")
 If a query has _required_ variables then they must be specified as
 arguments to the `execute()` method.
 
-For example, the "GetComandaDetalle" query has 1 required variable ("id")
-and can be executed via the [ExampleConnector.getComandaDetalle]
+For example, the "GetAvisosParaEquipo" query has 1 required variable ("rol")
+and can be executed via the [ExampleConnector.getAvisosParaEquipo]
 property as follows:
 
 ```kotlin
 val connector = ExampleConnector.instance
-val queryResult = connector.getComandaDetalle.execute(id=java.util.UUID.randomUUID())
-println("GetComandaDetalle query returned: ${queryResult.data}")
+val queryResult = connector.getAvisosParaEquipo.execute(rol="qux")
+println("GetAvisosParaEquipo query returned: ${queryResult.data}")
 ```
 
 

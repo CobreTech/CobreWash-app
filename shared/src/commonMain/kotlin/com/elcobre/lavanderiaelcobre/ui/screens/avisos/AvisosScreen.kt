@@ -18,6 +18,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +43,11 @@ import com.elcobre.lavanderiaelcobre.ui.theme.cobreIsDark
 fun AvisosScreen(
     avisos: List<Aviso>,
     applySystemBarsInsets: Boolean = true,
+    cargando: Boolean = false,
+    error: String? = null,
+    hayMas: Boolean = false,
+    onActualizar: () -> Unit = {},
+    onMas: () -> Unit = {},
 ) {
     CobreBackground(applySystemBarsInsets = applySystemBarsInsets) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -52,10 +59,15 @@ fun AvisosScreen(
                     color = brandMutedColor(),
                 )
             }
+            EstadoAvisos(cargando, error, onActualizar)
             if (avisos.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
                     Text(
-                        "No hay avisos por ahora.",
+                        when {
+                            cargando -> "Cargando avisos…"
+                            error != null -> "Los avisos no están disponibles por ahora."
+                            else -> "No hay avisos por ahora."
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = brandMutedColor(),
                         textAlign = TextAlign.Center,
@@ -67,8 +79,24 @@ fun AvisosScreen(
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
                     items(avisos, key = { it.id }) { aviso -> AvisoCard(aviso) }
+                    if (hayMas) item {
+                        TextButton(onClick = onMas, enabled = !cargando, modifier = Modifier.fillMaxWidth()) {
+                            Text("Cargar más avisos")
+                        }
+                    }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun EstadoAvisos(cargando: Boolean, error: String?, onActualizar: () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
+        if (cargando) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        TextButton(onClick = onActualizar, enabled = !cargando) {
+            Text(if (error == null) "Actualizar" else "Reintentar")
         }
     }
 }
@@ -127,6 +155,9 @@ private fun AvisoCard(aviso: Aviso) {
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f),
                 )
                 Spacer(Modifier.height(8.dp))
+                if (aviso.autor.isNotBlank()) {
+                    Text("Publicado por ${aviso.autor}", style = MaterialTheme.typography.labelSmall, color = brandMutedColor())
+                }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Icon(CobreIcons.Person, contentDescription = null, tint = brandMutedColor(), modifier = Modifier.size(13.dp))
                     Text(aviso.dirigidoA, style = MaterialTheme.typography.labelSmall, color = brandMutedColor())

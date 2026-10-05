@@ -50,6 +50,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import com.elcobre.lavanderiaelcobre.data.mock.MockData
 import com.elcobre.lavanderiaelcobre.data.model.Insumo
 import com.elcobre.lavanderiaelcobre.ui.components.CobreBackHandler
@@ -81,6 +84,7 @@ import com.elcobre.lavanderiaelcobre.ui.theme.cobreIsDark
 @Composable
 fun CobreApp() {
     val vm: CobreViewModel = viewModel { CobreViewModel() }
+    ActualizarAvisosVisibles(vm)
     LaunchedEffect(vm.sesion) {
         if (vm.operario != null) {
             while (true) {
@@ -158,6 +162,19 @@ fun CobreApp() {
     }
 }
 
+@Composable
+private fun ActualizarAvisosVisibles(vm: CobreViewModel) {
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(vm.sesion, lifecycle) {
+        if (vm.operario != null) lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                vm.refrescarAvisos()
+                kotlinx.coroutines.delay(30_000)
+            }
+        }
+    }
+}
+
 /** Contenido de cada [Pantalla], despachado desde [CobreApp]; una función por destino para mantener esto legible. */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -171,7 +188,12 @@ private fun DestinoContent(
         Pantalla.Login -> LoginDestino(vm)
         Pantalla.Dashboard -> DashboardDestino(vm, sharedScope, animatedScope)
         Pantalla.Avisos -> OperarioScaffold(destino, vm) { isTablet ->
-            AvisosScreen(avisos = vm.avisos, applySystemBarsInsets = !isTablet)
+            AvisosScreen(
+                avisos = vm.avisos, applySystemBarsInsets = !isTablet,
+                cargando = vm.cargandoAvisos, error = vm.errorAvisos,
+                hayMas = vm.avisos.size < vm.totalAvisos,
+                onActualizar = { vm.refrescarAvisos() }, onMas = { vm.refrescarAvisos(mas = true) },
+            )
         }
         Pantalla.Configuracion -> ConfiguracionDestino(destino, vm)
         Pantalla.Escaner -> EscanerDestino(vm)
@@ -377,7 +399,7 @@ private fun OperarioScaffold(
                         onSeleccionarTab = onSeleccionarTab,
                         onEscanearQR = onEscanearQR,
                         comandasActivas = vm.pedidos.count { !it.esFinal },
-                        avisosCount = vm.avisos.size,
+                        avisosCount = vm.totalAvisos,
                         alertasStockCount = vm.alertasStock.size,
                         operarioNombre = vm.operario?.nombre ?: "Operario Planta",
                         operarioRol = vm.operario?.turno ?: "Turno Mañana",

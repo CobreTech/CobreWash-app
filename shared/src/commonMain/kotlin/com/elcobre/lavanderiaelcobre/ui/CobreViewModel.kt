@@ -11,6 +11,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.CoroutineScope
 import com.elcobre.lavanderiaelcobre.data.ComandasRepository
+import com.elcobre.lavanderiaelcobre.data.AvisosRepository
+import com.elcobre.lavanderiaelcobre.data.FirebaseAvisosRepository
 import com.elcobre.lavanderiaelcobre.data.FirebaseComandasRepository
 import com.elcobre.lavanderiaelcobre.data.OperacionComandaException
 import com.elcobre.lavanderiaelcobre.data.mock.MockData
@@ -48,6 +50,7 @@ private val TABS: Set<Pantalla> = setOf(
 class CobreViewModel(
     private val repository: ComandasRepository = FirebaseComandasRepository(),
     private val scopeOverride: CoroutineScope? = null,
+    private val avisosRepository: AvisosRepository = FirebaseAvisosRepository(),
 ) : ViewModel() {
     private val scope get() = scopeOverride ?: viewModelScope
     var errorOperacion by mutableStateOf<String?>(null)
@@ -62,8 +65,46 @@ class CobreViewModel(
 
     val pedidos: List<Pedido> get() = _pedidos
 
-    /** RF-AN04 — solo lectura en el prototipo. */
-    val avisos: List<Aviso> = MockData.avisosIniciales()
+    var avisos by mutableStateOf<List<Aviso>>(emptyList())
+        private set
+    var totalAvisos by mutableStateOf(0)
+        private set
+    var cargandoAvisos by mutableStateOf(false)
+        private set
+    var errorAvisos by mutableStateOf<String?>(null)
+        private set
+    private var limiteAvisos = 20
+
+    fun refrescarAvisos(mas: Boolean = false) {
+        if (operario == null || cargandoAvisos) return
+        if (mas && avisos.size >= totalAvisos) return
+        val inicio = generacion
+        val limite = if (mas) limiteAvisos + 20 else limiteAvisos
+        cargandoAvisos = true
+        errorAvisos = null
+        scope.launch {
+            try {
+                val resultado = avisosRepository.consultar(0, limite)
+                if (inicio == generacion) {
+                    avisos = resultado.avisos.distinctBy { it.id }
+                    totalAvisos = resultado.total
+                    limiteAvisos = limite
+                }
+            } catch (error: OperacionComandaException) {
+                if (inicio == generacion) errorAvisos = error.message ?: "No se pudieron cargar los avisos. Intenta nuevamente."
+            } finally {
+                if (inicio == generacion) cargandoAvisos = false
+            }
+        }
+    }
+
+    private fun limpiarAvisos() {
+        avisos = emptyList()
+        totalAvisos = 0
+        limiteAvisos = 20
+        cargandoAvisos = false
+        errorAvisos = null
+    }
 
     private val _alertasStock: SnapshotStateList<AlertaStock> =
         mutableStateListOf<AlertaStock>().apply { addAll(MockData.alertasStockIniciales()) }
@@ -123,6 +164,7 @@ class CobreViewModel(
         operaciones.clear()
         _pedidos.clear()
         sesion = s
+        limpiarAvisos()
 
         val destino = when (s) {
             is Sesion.DeOperario -> {
@@ -176,6 +218,7 @@ class CobreViewModel(
         repository.cerrarSesion()
         _pedidos.clear()
         operaciones.clear()
+        limpiarAvisos()
         errorOperacion = null
         cargando = false
         qrPendiente = null
