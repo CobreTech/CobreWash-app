@@ -53,6 +53,8 @@ replay_pid*
 *.apk
 *.aab
 
-# Documentos temporales o descargas locales en la raíz
+# Documentos temporales, reportes y scripts de prueba locales
 /*.pdf
-
+/*.xlsx
+/*.csv
+scratch/

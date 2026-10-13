@@ -80,9 +80,9 @@ val connector: ExampleConnector = ExampleConnector.getInstance(
 ### ExampleConnector - Query and Mutation Properties
 
 The `example` Data Connect connector defines
-28 queries and
-37 mutations,
-a total of 65 operations.
+36 queries and
+42 mutations,
+a total of 78 operations.
 Each of these operations is exposed
 as a property of [ExampleConnector].
 
@@ -189,14 +189,14 @@ println("DiagnosticoComandas query returned: ${queryResult.data}")
 If a query has _required_ variables then they must be specified as
 arguments to the `execute()` method.
 
-For example, the "GetAvisosParaEquipo" query has 1 required variable ("rol")
-and can be executed via the [ExampleConnector.getAvisosParaEquipo]
+For example, the "GetDetalleReporteCuentas" query has 2 required variables ("desde" and "hasta")
+and can be executed via the [ExampleConnector.getDetalleReporteCuentas]
 property as follows:
 
 ```kotlin
 val connector = ExampleConnector.instance
-val queryResult = connector.getAvisosParaEquipo.execute(rol="qux")
-println("GetAvisosParaEquipo query returned: ${queryResult.data}")
+val queryResult = connector.getDetalleReporteCuentas.execute(desde=Timestamp(723045766, 462198766), hasta=Timestamp(1703884786, 886570560))
+println("GetDetalleReporteCuentas query returned: ${queryResult.data}")
 ```
 
 
@@ -208,21 +208,22 @@ however, if they _are_ specified,
 then they are specified in a Kotlin DSL block as the last argument
 of the `execute()` method.
 
-For example, the "GetComandasPaginadas" query has 6 optional variables ("limit", "offset", "estados", "cliente", "fechaDesde", and "fechaHasta")
-and can be executed via the [ExampleConnector.getComandasPaginadas]
+For example, the "GetHistorialVehiculos" query has 7 optional variables ("vehiculoId", "repartidorId", "estado", "desde", "hasta", "limit", and "offset")
+and can be executed via the [ExampleConnector.getHistorialVehiculos]
 property as follows:
 
 ```kotlin
 val connector = ExampleConnector.instance
-val queryResult = connector.getComandasPaginadas.execute {
+val queryResult = connector.getHistorialVehiculos.execute {
+  vehiculoId = java.util.UUID.randomUUID()
+  repartidorId = "waldo"
+  estado = null
+  desde = Timestamp(723045766, 462198766)
+  hasta = Timestamp(1703884786, 886570560)
   limit = 2702
   offset = 1775
-  estados = listOf(...)
-  cliente = "grault"
-  fechaDesde = Timestamp(1173855893, 338240134)
-  fechaHasta = Timestamp(709150052, 238657902)
 }
-println("GetComandasPaginadas query returned: ${queryResult.data}")
+println("GetHistorialVehiculos query returned: ${queryResult.data}")
 ```
 
 

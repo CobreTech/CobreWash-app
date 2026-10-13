@@ -27,6 +27,8 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
   
     public val actualizarVehiculo: ActualizarVehiculoMutation
   
+    public val adjuntarFotoInspeccionFlota: AdjuntarFotoInspeccionFlotaMutation
+  
     public val agregarComandaDetalle: AgregarComandaDetalleMutation
   
     public val agregarComentarioComanda: AgregarComentarioComandaMutation
@@ -71,6 +73,8 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
   
     public val editarFichaCliente: EditarFichaClienteMutation
   
+    public val editarVehiculoFlota: EditarVehiculoFlotaMutation
+  
     public val eliminarDetallesComanda: EliminarDetallesComandaMutation
   
     public val entregarComanda: EntregarComandaMutation
@@ -95,9 +99,19 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
   
     public val getComandasParaAlertas: GetComandasParaAlertasQuery
   
+    public val getDetalleReporteCuentas: GetDetalleReporteCuentasQuery
+  
+    public val getDetalleReporteServicios: GetDetalleReporteServiciosQuery
+  
     public val getEtapasProduccion: GetEtapasProduccionQuery
   
     public val getFichasClientes: GetFichasClientesQuery
+  
+    public val getFiltrosReportes: GetFiltrosReportesQuery
+  
+    public val getFlotaVehiculos: GetFlotaVehiculosQuery
+  
+    public val getHistorialVehiculos: GetHistorialVehiculosQuery
   
     public val getIncidencias: GetIncidenciasQuery
   
@@ -116,6 +130,12 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
     public val getMisSalidasVehiculo: GetMisSalidasVehiculoQuery
   
     public val getPanelProduccion: GetPanelProduccionQuery
+  
+    public val getReporteCuentas: GetReporteCuentasQuery
+  
+    public val getReporteServicios: GetReporteServiciosQuery
+  
+    public val getReporteVolumen: GetReporteVolumenQuery
   
     public val getRoles: GetRolesQuery
   
@@ -141,7 +161,13 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
   
     public val registrarInspeccionDespues: RegistrarInspeccionDespuesMutation
   
+    public val registrarRetornoFlota: RegistrarRetornoFlotaMutation
+  
+    public val registrarSalidaFlota: RegistrarSalidaFlotaMutation
+  
     public val registrarSalidaInventario: RegistrarSalidaInventarioMutation
+  
+    public val registrarVehiculoFlota: RegistrarVehiculoFlotaMutation
   
     public val registrarse: RegistrarseMutation
   
@@ -206,6 +232,10 @@ private class ExampleConnectorImpl(
   
     override val actualizarVehiculo by lazy(LazyThreadSafetyMode.PUBLICATION) {
       ActualizarVehiculoMutationImpl(this)
+    }
+  
+    override val adjuntarFotoInspeccionFlota by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      AdjuntarFotoInspeccionFlotaMutationImpl(this)
     }
   
     override val agregarComandaDetalle by lazy(LazyThreadSafetyMode.PUBLICATION) {
@@ -296,6 +326,10 @@ private class ExampleConnectorImpl(
       EditarFichaClienteMutationImpl(this)
     }
   
+    override val editarVehiculoFlota by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      EditarVehiculoFlotaMutationImpl(this)
+    }
+  
     override val eliminarDetallesComanda by lazy(LazyThreadSafetyMode.PUBLICATION) {
       EliminarDetallesComandaMutationImpl(this)
     }
@@ -344,12 +378,32 @@ private class ExampleConnectorImpl(
       GetComandasParaAlertasQueryImpl(this)
     }
   
+    override val getDetalleReporteCuentas by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GetDetalleReporteCuentasQueryImpl(this)
+    }
+  
+    override val getDetalleReporteServicios by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GetDetalleReporteServiciosQueryImpl(this)
+    }
+  
     override val getEtapasProduccion by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetEtapasProduccionQueryImpl(this)
     }
   
     override val getFichasClientes by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetFichasClientesQueryImpl(this)
+    }
+  
+    override val getFiltrosReportes by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GetFiltrosReportesQueryImpl(this)
+    }
+  
+    override val getFlotaVehiculos by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GetFlotaVehiculosQueryImpl(this)
+    }
+  
+    override val getHistorialVehiculos by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GetHistorialVehiculosQueryImpl(this)
     }
   
     override val getIncidencias by lazy(LazyThreadSafetyMode.PUBLICATION) {
@@ -386,6 +440,18 @@ private class ExampleConnectorImpl(
   
     override val getPanelProduccion by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetPanelProduccionQueryImpl(this)
+    }
+  
+    override val getReporteCuentas by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GetReporteCuentasQueryImpl(this)
+    }
+  
+    override val getReporteServicios by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GetReporteServiciosQueryImpl(this)
+    }
+  
+    override val getReporteVolumen by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GetReporteVolumenQueryImpl(this)
     }
   
     override val getRoles by lazy(LazyThreadSafetyMode.PUBLICATION) {
@@ -436,8 +502,20 @@ private class ExampleConnectorImpl(
       RegistrarInspeccionDespuesMutationImpl(this)
     }
   
+    override val registrarRetornoFlota by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      RegistrarRetornoFlotaMutationImpl(this)
+    }
+  
+    override val registrarSalidaFlota by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      RegistrarSalidaFlotaMutationImpl(this)
+    }
+  
     override val registrarSalidaInventario by lazy(LazyThreadSafetyMode.PUBLICATION) {
       RegistrarSalidaInventarioMutationImpl(this)
+    }
+  
+    override val registrarVehiculoFlota by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      RegistrarVehiculoFlotaMutationImpl(this)
     }
   
     override val registrarse by lazy(LazyThreadSafetyMode.PUBLICATION) {
@@ -464,6 +542,7 @@ private class ExampleConnectorImpl(
         actualizarInsumo,
         actualizarUsuario,
         actualizarVehiculo,
+        adjuntarFotoInspeccionFlota,
         agregarComandaDetalle,
         agregarComentarioComanda,
         agregarFotoInspeccionVehiculo,
@@ -485,6 +564,7 @@ private class ExampleConnectorImpl(
         crearVehiculo,
         editarComanda,
         editarFichaCliente,
+        editarVehiculoFlota,
         eliminarDetallesComanda,
         entregarComanda,
         iniciarSalidaVehiculo,
@@ -493,7 +573,10 @@ private class ExampleConnectorImpl(
         registrarIncidenciaComanda,
         registrarInspeccionAntes,
         registrarInspeccionDespues,
+        registrarRetornoFlota,
+        registrarSalidaFlota,
         registrarSalidaInventario,
+        registrarVehiculoFlota,
         registrarse,
         registrarseComoCliente,
         resolverMiIncidencia,
@@ -514,8 +597,13 @@ private class ExampleConnectorImpl(
         getComandasActivasCount,
         getComandasPaginadas,
         getComandasParaAlertas,
+        getDetalleReporteCuentas,
+        getDetalleReporteServicios,
         getEtapasProduccion,
         getFichasClientes,
+        getFiltrosReportes,
+        getFlotaVehiculos,
+        getHistorialVehiculos,
         getIncidencias,
         getInsumoPorQr,
         getInsumosOperario,
@@ -525,6 +613,9 @@ private class ExampleConnectorImpl(
         getMisComandasAsignadas,
         getMisSalidasVehiculo,
         getPanelProduccion,
+        getReporteCuentas,
+        getReporteServicios,
+        getReporteVolumen,
         getRoles,
         getSeguimientoProduccion,
         getSeguimientoPublicoPorNumero,
@@ -723,6 +814,21 @@ private class ActualizarVehiculoMutationImpl(
     ActualizarVehiculoMutation.Companion.operationName,
     ActualizarVehiculoMutation.Companion.dataDeserializer,
     ActualizarVehiculoMutation.Companion.variablesSerializer,
+  )
+
+
+private class AdjuntarFotoInspeccionFlotaMutationImpl(
+  connector: ExampleConnector
+):
+  AdjuntarFotoInspeccionFlotaMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      AdjuntarFotoInspeccionFlotaMutation.Data,
+      AdjuntarFotoInspeccionFlotaMutation.Variables
+  >(
+    connector,
+    AdjuntarFotoInspeccionFlotaMutation.Companion.operationName,
+    AdjuntarFotoInspeccionFlotaMutation.Companion.dataDeserializer,
+    AdjuntarFotoInspeccionFlotaMutation.Companion.variablesSerializer,
   )
 
 
@@ -1056,6 +1162,21 @@ private class EditarFichaClienteMutationImpl(
   )
 
 
+private class EditarVehiculoFlotaMutationImpl(
+  connector: ExampleConnector
+):
+  EditarVehiculoFlotaMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      EditarVehiculoFlotaMutation.Data,
+      EditarVehiculoFlotaMutation.Variables
+  >(
+    connector,
+    EditarVehiculoFlotaMutation.Companion.operationName,
+    EditarVehiculoFlotaMutation.Companion.dataDeserializer,
+    EditarVehiculoFlotaMutation.Companion.variablesSerializer,
+  )
+
+
 private class EliminarDetallesComandaMutationImpl(
   connector: ExampleConnector
 ):
@@ -1236,6 +1357,36 @@ private class GetComandasParaAlertasQueryImpl(
   )
 
 
+private class GetDetalleReporteCuentasQueryImpl(
+  connector: ExampleConnector
+):
+  GetDetalleReporteCuentasQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      GetDetalleReporteCuentasQuery.Data,
+      GetDetalleReporteCuentasQuery.Variables
+  >(
+    connector,
+    GetDetalleReporteCuentasQuery.Companion.operationName,
+    GetDetalleReporteCuentasQuery.Companion.dataDeserializer,
+    GetDetalleReporteCuentasQuery.Companion.variablesSerializer,
+  )
+
+
+private class GetDetalleReporteServiciosQueryImpl(
+  connector: ExampleConnector
+):
+  GetDetalleReporteServiciosQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      GetDetalleReporteServiciosQuery.Data,
+      GetDetalleReporteServiciosQuery.Variables
+  >(
+    connector,
+    GetDetalleReporteServiciosQuery.Companion.operationName,
+    GetDetalleReporteServiciosQuery.Companion.dataDeserializer,
+    GetDetalleReporteServiciosQuery.Companion.variablesSerializer,
+  )
+
+
 private class GetEtapasProduccionQueryImpl(
   connector: ExampleConnector
 ):
@@ -1263,6 +1414,51 @@ private class GetFichasClientesQueryImpl(
     GetFichasClientesQuery.Companion.operationName,
     GetFichasClientesQuery.Companion.dataDeserializer,
     GetFichasClientesQuery.Companion.variablesSerializer,
+  )
+
+
+private class GetFiltrosReportesQueryImpl(
+  connector: ExampleConnector
+):
+  GetFiltrosReportesQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      GetFiltrosReportesQuery.Data,
+      GetFiltrosReportesQuery.Variables
+  >(
+    connector,
+    GetFiltrosReportesQuery.Companion.operationName,
+    GetFiltrosReportesQuery.Companion.dataDeserializer,
+    GetFiltrosReportesQuery.Companion.variablesSerializer,
+  )
+
+
+private class GetFlotaVehiculosQueryImpl(
+  connector: ExampleConnector
+):
+  GetFlotaVehiculosQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      GetFlotaVehiculosQuery.Data,
+      Unit
+  >(
+    connector,
+    GetFlotaVehiculosQuery.Companion.operationName,
+    GetFlotaVehiculosQuery.Companion.dataDeserializer,
+    GetFlotaVehiculosQuery.Companion.variablesSerializer,
+  )
+
+
+private class GetHistorialVehiculosQueryImpl(
+  connector: ExampleConnector
+):
+  GetHistorialVehiculosQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      GetHistorialVehiculosQuery.Data,
+      GetHistorialVehiculosQuery.Variables
+  >(
+    connector,
+    GetHistorialVehiculosQuery.Companion.operationName,
+    GetHistorialVehiculosQuery.Companion.dataDeserializer,
+    GetHistorialVehiculosQuery.Companion.variablesSerializer,
   )
 
 
@@ -1398,6 +1594,51 @@ private class GetPanelProduccionQueryImpl(
     GetPanelProduccionQuery.Companion.operationName,
     GetPanelProduccionQuery.Companion.dataDeserializer,
     GetPanelProduccionQuery.Companion.variablesSerializer,
+  )
+
+
+private class GetReporteCuentasQueryImpl(
+  connector: ExampleConnector
+):
+  GetReporteCuentasQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      GetReporteCuentasQuery.Data,
+      GetReporteCuentasQuery.Variables
+  >(
+    connector,
+    GetReporteCuentasQuery.Companion.operationName,
+    GetReporteCuentasQuery.Companion.dataDeserializer,
+    GetReporteCuentasQuery.Companion.variablesSerializer,
+  )
+
+
+private class GetReporteServiciosQueryImpl(
+  connector: ExampleConnector
+):
+  GetReporteServiciosQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      GetReporteServiciosQuery.Data,
+      GetReporteServiciosQuery.Variables
+  >(
+    connector,
+    GetReporteServiciosQuery.Companion.operationName,
+    GetReporteServiciosQuery.Companion.dataDeserializer,
+    GetReporteServiciosQuery.Companion.variablesSerializer,
+  )
+
+
+private class GetReporteVolumenQueryImpl(
+  connector: ExampleConnector
+):
+  GetReporteVolumenQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      GetReporteVolumenQuery.Data,
+      GetReporteVolumenQuery.Variables
+  >(
+    connector,
+    GetReporteVolumenQuery.Companion.operationName,
+    GetReporteVolumenQuery.Companion.dataDeserializer,
+    GetReporteVolumenQuery.Companion.variablesSerializer,
   )
 
 
@@ -1581,6 +1822,36 @@ private class RegistrarInspeccionDespuesMutationImpl(
   )
 
 
+private class RegistrarRetornoFlotaMutationImpl(
+  connector: ExampleConnector
+):
+  RegistrarRetornoFlotaMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      RegistrarRetornoFlotaMutation.Data,
+      RegistrarRetornoFlotaMutation.Variables
+  >(
+    connector,
+    RegistrarRetornoFlotaMutation.Companion.operationName,
+    RegistrarRetornoFlotaMutation.Companion.dataDeserializer,
+    RegistrarRetornoFlotaMutation.Companion.variablesSerializer,
+  )
+
+
+private class RegistrarSalidaFlotaMutationImpl(
+  connector: ExampleConnector
+):
+  RegistrarSalidaFlotaMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      RegistrarSalidaFlotaMutation.Data,
+      RegistrarSalidaFlotaMutation.Variables
+  >(
+    connector,
+    RegistrarSalidaFlotaMutation.Companion.operationName,
+    RegistrarSalidaFlotaMutation.Companion.dataDeserializer,
+    RegistrarSalidaFlotaMutation.Companion.variablesSerializer,
+  )
+
+
 private class RegistrarSalidaInventarioMutationImpl(
   connector: ExampleConnector
 ):
@@ -1593,6 +1864,21 @@ private class RegistrarSalidaInventarioMutationImpl(
     RegistrarSalidaInventarioMutation.Companion.operationName,
     RegistrarSalidaInventarioMutation.Companion.dataDeserializer,
     RegistrarSalidaInventarioMutation.Companion.variablesSerializer,
+  )
+
+
+private class RegistrarVehiculoFlotaMutationImpl(
+  connector: ExampleConnector
+):
+  RegistrarVehiculoFlotaMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      RegistrarVehiculoFlotaMutation.Data,
+      RegistrarVehiculoFlotaMutation.Variables
+  >(
+    connector,
+    RegistrarVehiculoFlotaMutation.Companion.operationName,
+    RegistrarVehiculoFlotaMutation.Companion.dataDeserializer,
+    RegistrarVehiculoFlotaMutation.Companion.variablesSerializer,
   )
 
 
