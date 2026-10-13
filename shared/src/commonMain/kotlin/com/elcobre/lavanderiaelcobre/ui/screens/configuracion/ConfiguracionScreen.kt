@@ -34,9 +34,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.elcobre.lavanderiaelcobre.data.model.Operario
+import com.elcobre.lavanderiaelcobre.data.model.TurnoPlanta
 import com.elcobre.lavanderiaelcobre.ui.components.BrandCtaGradient
 import com.elcobre.lavanderiaelcobre.ui.components.CobreBackground
 import com.elcobre.lavanderiaelcobre.ui.components.CobreIcons
@@ -69,7 +75,12 @@ fun ConfiguracionScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(24.dp),
         ) {
-            Text("Configuración", style = MaterialTheme.typography.headlineMedium, color = brandHeadingColor())
+            Text(
+                "Configuración",
+                style = MaterialTheme.typography.headlineMedium,
+                color = brandHeadingColor(),
+                modifier = Modifier.semantics { heading() },
+            )
             Spacer(Modifier.height(2.dp))
             Text(
                 "Tu cuenta, apariencia y sesión.",
@@ -114,7 +125,11 @@ fun ConfiguracionScreen(
 
 @Composable
 private fun CuentaCard(operario: Operario) {
-    GlassCard(modifier = Modifier.fillMaxWidth(), elevation = 10.dp) {
+    val turnoPorReloj = remember { TurnoPlanta.turnoActual() }
+    GlassCard(
+        modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
+        elevation = 10.dp,
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier.size(48.dp).background(BrandCtaGradient, RoundedCornerShape(50)),
@@ -130,7 +145,11 @@ private fun CuentaCard(operario: Operario) {
             Spacer(Modifier.width(14.dp))
             Column {
                 Text(operario.nombre, style = MaterialTheme.typography.titleMedium, color = brandHeadingColor())
-                Text("${operario.rol} · ${operario.turno}", style = MaterialTheme.typography.bodySmall, color = brandMutedColor())
+                Text(
+                    "${operario.rol} · ${operario.turno} (${turnoPorReloj.horario})",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = brandMutedColor(),
+                )
             }
         }
     }
@@ -140,7 +159,12 @@ private fun CuentaCard(operario: Operario) {
 private fun AparienciaCard(modoTema: ModoTema, onCambiarTema: (ModoTema) -> Unit) {
     GlassCard(modifier = Modifier.fillMaxWidth(), elevation = 8.dp) {
         Column {
-            Text("Apariencia", style = MaterialTheme.typography.titleSmall, color = brandHeadingColor())
+            Text(
+                "Apariencia",
+                style = MaterialTheme.typography.titleSmall,
+                color = brandHeadingColor(),
+                modifier = Modifier.semantics { heading() },
+            )
             Spacer(Modifier.height(4.dp))
             Text(
                 "Elige cómo se ve la app en este dispositivo.",
@@ -174,6 +198,10 @@ private fun ModoTemaOpcion(modo: ModoTema, activo: Boolean, onClick: () -> Unit)
             .clip(RoundedCornerShape(14.dp))
             .background(fondo)
             .border(1.dp, borde, RoundedCornerShape(14.dp))
+            .semantics(mergeDescendants = true) {
+                role = Role.RadioButton
+                selected = activo
+            }
             .clickable(interactionSource = interaction, indication = null) { onClick() }
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -211,6 +239,7 @@ private fun CerrarSesionBoton(onClick: () -> Unit) {
             .fillMaxWidth()
             .pressableScale(interaction)
             .background(accent.copy(alpha = if (isDark) 0.16f else 0.10f), RoundedCornerShape(16.dp))
+            .semantics(mergeDescendants = true) { role = Role.Button }
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -220,3 +249,4 @@ private fun CerrarSesionBoton(onClick: () -> Unit) {
         Text("Cerrar sesión", style = MaterialTheme.typography.labelLarge, color = accent, fontWeight = FontWeight.SemiBold)
     }
 }
+

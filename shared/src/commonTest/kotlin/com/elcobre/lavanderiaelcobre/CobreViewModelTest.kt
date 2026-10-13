@@ -2,13 +2,13 @@ package com.elcobre.lavanderiaelcobre
 
 import com.elcobre.lavanderiaelcobre.data.model.Administrador
 import com.elcobre.lavanderiaelcobre.data.model.EtapaProceso
-import com.elcobre.lavanderiaelcobre.data.model.Insumo
 import com.elcobre.lavanderiaelcobre.data.model.Operario
 import com.elcobre.lavanderiaelcobre.data.model.Sesion
-import com.elcobre.lavanderiaelcobre.data.model.SeveridadStock
 import com.elcobre.lavanderiaelcobre.data.model.TipoAlerta
+import com.elcobre.lavanderiaelcobre.data.model.TurnoPlanta
 import com.elcobre.lavanderiaelcobre.ui.CobreViewModel
 import com.elcobre.lavanderiaelcobre.ui.Pantalla
+import com.elcobre.lavanderiaelcobre.ui.screens.login.sesionParaRol
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -129,18 +129,6 @@ class CobreViewModelTest {
         assertFalse(vm.pedido("P001")!!.estaBloqueado)
     }
 
-    @Test
-    fun crearAlertaStock_generaIdsMonotonicosSinColisionar() {
-        val vm = crearViewModel()
-        val previos = vm.alertasStock.size
-
-        vm.crearAlertaStock(Insumo.CLORO, SeveridadStock.AGOTADO, "sin cloro")
-        vm.crearAlertaStock(Insumo.BOLSAS, SeveridadStock.BAJO, "quedan pocas")
-
-        assertEquals(previos + 2, vm.alertasStock.size)
-        val ids = vm.alertasStock.map { it.id }
-        assertEquals(ids.size, ids.toSet().size) // todos distintos
-    }
 
     @Test
     fun pedidoPorComanda_buscaSinDistinguirMayusculas() {
@@ -158,5 +146,42 @@ class CobreViewModelTest {
         // No debe elegir P002 (bloqueada) ni P005 (ya finalizada) mientras haya otra opción.
         assertFalse(siguiente.esFinal)
         assertFalse(siguiente.estaBloqueado)
+    }
+
+    @Test
+    fun cambiarTurno_actualizaOperarioYSesionParaRolRespetaTurnoElegido() {
+        val vm = crearViewModel()
+        val sesionInicial = sesionParaRol("operario", "Carlos", TurnoPlanta.TARDE)
+        assertNotNull(sesionInicial)
+        vm.iniciarSesion(sesionInicial)
+        assertEquals("Turno Tarde", vm.operario?.turno)
+
+        vm.cambiarTurno(TurnoPlanta.NOCHE.etiqueta)
+        assertEquals("Turno Noche", vm.operario?.turno)
+    }
+
+    @Test
+    fun turnoAutomatico_calculaTurnoSegunHoraYSincroniza() {
+        assertEquals(TurnoPlanta.MANANA, TurnoPlanta.porHora(6))
+        assertEquals(TurnoPlanta.MANANA, TurnoPlanta.porHora(13))
+        assertEquals(TurnoPlanta.TARDE, TurnoPlanta.porHora(14))
+        assertEquals(TurnoPlanta.TARDE, TurnoPlanta.porHora(21))
+        assertEquals(TurnoPlanta.NOCHE, TurnoPlanta.porHora(22))
+        assertEquals(TurnoPlanta.NOCHE, TurnoPlanta.porHora(23))
+        assertEquals(TurnoPlanta.NOCHE, TurnoPlanta.porHora(0))
+        assertEquals(TurnoPlanta.NOCHE, TurnoPlanta.porHora(5))
+
+        val vm = crearViewModel()
+        val sesion = sesionParaRol("operario", "Ana")
+        assertNotNull(sesion)
+        vm.iniciarSesion(sesion)
+        // El turno por defecto coincide con TurnoPlanta.turnoActual()
+        assertEquals(TurnoPlanta.turnoActual().etiqueta, vm.operario?.turno)
+
+        // Si se cambia manualmente y luego se sincroniza, adopta el turno horario actual
+        vm.cambiarTurno("Turno Inexistente")
+        assertEquals("Turno Inexistente", vm.operario?.turno)
+        vm.sincronizarTurnoAutomatico()
+        assertEquals(TurnoPlanta.turnoActual().etiqueta, vm.operario?.turno)
     }
 }

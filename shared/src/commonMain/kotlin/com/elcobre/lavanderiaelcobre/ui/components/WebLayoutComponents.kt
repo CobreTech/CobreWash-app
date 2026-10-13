@@ -33,6 +33,11 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -223,6 +228,10 @@ private fun SidebarNavButton(
             .pressableScale(interaction, pressedScale = 0.98f)
             .clip(RoundedCornerShape(12.dp))
             .background(if (seleccionado) Brand500.copy(alpha = 0.12f) else Color.Transparent)
+            .semantics(mergeDescendants = true) {
+                role = Role.Tab
+                selected = seleccionado
+            }
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
@@ -294,6 +303,7 @@ private fun SidebarAlertPreview(totalAlertas: Int, onClick: () -> Unit) {
             .clip(RoundedCornerShape(14.dp))
             .background(cardBg)
             .border(1.dp, cardBorder, RoundedCornerShape(14.dp))
+            .semantics(mergeDescendants = true) { role = Role.Button }
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
             .padding(11.dp),
     ) {
@@ -393,13 +403,13 @@ private fun SidebarUserProfile(
         }
         IconButton(
             onClick = onCerrarSesion,
-            modifier = Modifier.size(32.dp),
+            modifier = Modifier.size(40.dp),
         ) {
             Icon(
                 CobreIcons.Logout,
                 contentDescription = "Cerrar sesión",
                 tint = logoutColor,
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(18.dp),
             )
         }
     }
@@ -418,6 +428,7 @@ fun WebTopbar(
     onSearchChange: (String) -> Unit = {},
     showSearch: Boolean = true,
     alertasCount: Int = 0,
+    onAlertasClick: () -> Unit = {},
     onMenuClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -445,9 +456,10 @@ fun WebTopbar(
             Box(
                 modifier = Modifier
                     .pressableScale(interaction)
-                    .size(42.dp)
+                    .size(44.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(if (isDark) DarkSurface2 else Stone200.copy(alpha = 0.5f))
+                    .semantics { role = Role.Button }
                     .clickable(interactionSource = interaction, indication = null, onClick = onMenuClick),
                 contentAlignment = Alignment.Center,
             ) {
@@ -500,8 +512,8 @@ fun WebTopbar(
         Box(contentAlignment = Alignment.TopEnd) {
             TopbarIconButton(
                 icon = CobreIcons.Notifications,
-                contentDescription = "Notificaciones",
-                onClick = {},
+                contentDescription = if (alertasCount > 0) "Avisos y alertas ($alertasCount pendientes)" else "Avisos y alertas",
+                onClick = onAlertasClick,
             )
             if (alertasCount > 0) {
                 Box(
@@ -577,19 +589,24 @@ private fun TopbarIconButton(
 
     Box(
         modifier = Modifier
-            .size(40.dp)
+            .size(44.dp)
             .pressableScale(interaction)
             .clip(RoundedCornerShape(12.dp))
             .background(btnBg)
             .border(1.dp, borderCol, RoundedCornerShape(12.dp))
+            .semantics {
+                role = Role.Button
+                this.contentDescription = contentDescription
+            }
             .clickable(interactionSource = interaction, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             icon,
-            contentDescription = contentDescription,
+            contentDescription = null,
             tint = if (isDark) Brand400 else Brand500,
             modifier = Modifier.size(18.dp),
         )
     }
 }
+

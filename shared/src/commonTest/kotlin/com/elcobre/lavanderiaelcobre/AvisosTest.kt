@@ -7,6 +7,7 @@ import com.elcobre.lavanderiaelcobre.data.model.Aviso
 import com.elcobre.lavanderiaelcobre.data.model.Operario
 import com.elcobre.lavanderiaelcobre.data.model.Sesion
 import com.elcobre.lavanderiaelcobre.ui.CobreViewModel
+import com.elcobre.lavanderiaelcobre.ui.Pantalla
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.NonCancellable
@@ -97,5 +98,24 @@ class AvisosTest {
         assertTrue(vm.avisos.isEmpty())
         assertEquals(0, vm.totalAvisos)
         assertFalse(vm.cargandoAvisos)
+    }
+
+    @Test fun avisosNoLeidosSeMarcanComoLeidosAlEntrarAPantallaAvisos() = runTest {
+        var cantidad = 3
+        val repo = AvisosRepository { _, _ -> PaginaAvisos(datos(cantidad), cantidad) }
+        val vm = CobreViewModel(FakeComandasRepository(), backgroundScope, repo)
+        vm.iniciarSesion(sesion)
+        vm.refrescarAvisos()
+        testScheduler.runCurrent()
+        assertEquals(3, vm.avisosNoLeidos)
+
+        vm.navegar(Pantalla.Avisos)
+        assertEquals(0, vm.avisosNoLeidos)
+
+        vm.navegar(Pantalla.Dashboard)
+        cantidad = 5
+        vm.refrescarAvisos()
+        testScheduler.runCurrent()
+        assertEquals(2, vm.avisosNoLeidos)
     }
 }

@@ -23,8 +23,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -42,11 +44,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
@@ -55,10 +63,10 @@ import com.elcobre.lavanderiaelcobre.data.auth.AuthRepository
 import com.elcobre.lavanderiaelcobre.data.auth.AuthResultado
 import com.elcobre.lavanderiaelcobre.data.auth.PerfilRepository
 import com.elcobre.lavanderiaelcobre.data.auth.PerfilResultado
-import com.elcobre.lavanderiaelcobre.data.mock.MockData
 import com.elcobre.lavanderiaelcobre.data.model.Administrador
 import com.elcobre.lavanderiaelcobre.data.model.Operario
 import com.elcobre.lavanderiaelcobre.data.model.Sesion
+import com.elcobre.lavanderiaelcobre.data.model.TurnoPlanta
 import com.elcobre.lavanderiaelcobre.ui.components.BrandCtaGradient
 import com.elcobre.lavanderiaelcobre.ui.components.CobreBackground
 import com.elcobre.lavanderiaelcobre.ui.components.CobreIcons
@@ -87,8 +95,12 @@ import lavanderiaelcobre.shared.generated.resources.logo
 import org.jetbrains.compose.resources.painterResource
 
 /** Mapea el rol de Data Connect (igual que lib/roles.ts en la web) a una sesión de la app. */
-private fun sesionParaRol(rolNombre: String, nombre: String): Sesion? = when (rolNombre) {
-    "operario" -> Sesion.DeOperario(Operario(nombre = nombre, rol = "Operario de planta", turno = MockData.operario.turno))
+internal fun sesionParaRol(
+    rolNombre: String,
+    nombre: String,
+    turno: TurnoPlanta = TurnoPlanta.turnoActual(),
+): Sesion? = when (rolNombre) {
+    "operario" -> Sesion.DeOperario(Operario(nombre = nombre, rol = "Operario de planta", turno = turno.etiqueta))
     "admin" -> Sesion.DeAdministrador(Administrador(nombre = nombre))
     else -> null // "recepcionista" y "cliente" no tienen vista en esta app.
 }
@@ -100,6 +112,7 @@ fun LoginScreen(
 ) {
     var correo by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    val turnoAutomatico = remember { TurnoPlanta.turnoActual() }
     var error by remember { mutableStateOf<String?>(null) }
     var visible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
@@ -136,7 +149,7 @@ fun LoginScreen(
                 is AuthResultado.Exito -> {
                     when (val perfil = perfilRepository.obtenerMiPerfil()) {
                         is PerfilResultado.Exito -> {
-                            val sesion = sesionParaRol(perfil.rolNombre, perfil.nombre)
+                            val sesion = sesionParaRol(perfil.rolNombre, perfil.nombre, TurnoPlanta.turnoActual())
                             isLoading = false
                             if (sesion == null) {
                                 authRepository.cerrarSesion()
@@ -165,20 +178,14 @@ fun LoginScreen(
         val isDark = cobreIsDark()
         Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
             Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(4.dp),
-            ) {
-                LoginThemeToggle(isDark = isDark, onClick = onToggleTema)
-            }
-
-            Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
                 ) {
                     LoginCard(
                         visible = visible,
@@ -187,6 +194,7 @@ fun LoginScreen(
                         onCorreoChange = { correo = it; error = null },
                         password = password,
                         onPasswordChange = { password = it; error = null },
+                        turno = turnoAutomatico,
                         error = error,
                         isLoading = isLoading,
                         onSubmit = { intentarEntrar() },
@@ -194,6 +202,14 @@ fun LoginScreen(
                     Spacer(Modifier.height(24.dp))
                     LoginFooter()
                 }
+            }
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp),
+            ) {
+                LoginThemeToggle(isDark = isDark, onClick = onToggleTema)
             }
         }
     }
@@ -207,17 +223,23 @@ private fun LoginThemeToggle(isDark: Boolean, onClick: () -> Unit) {
 
     Box(
         modifier = Modifier
-            .size(42.dp)
+            .size(48.dp)
             .pressableScale(interaction)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(btnBg)
-            .border(1.dp, borderCol, RoundedCornerShape(12.dp))
-            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
+            .border(1.dp, borderCol, RoundedCornerShape(14.dp))
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                role = Role.Button,
+                onClickLabel = if (isDark) "Cambiar a tema claro" else "Cambiar a tema oscuro",
+                onClick = onClick,
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             if (isDark) CobreIcons.Sun else CobreIcons.Moon,
-            contentDescription = "Cambiar tema",
+            contentDescription = if (isDark) "Tema oscuro activo, cambiar a claro" else "Tema claro activo, cambiar a oscuro",
             tint = if (isDark) Brand400 else Brand500,
             modifier = Modifier.size(20.dp),
         )
@@ -232,6 +254,7 @@ private fun LoginCard(
     onCorreoChange: (String) -> Unit,
     password: String,
     onPasswordChange: (String) -> Unit,
+    turno: TurnoPlanta,
     error: String?,
     isLoading: Boolean,
     onSubmit: () -> Unit,
@@ -257,6 +280,7 @@ private fun LoginCard(
                         onCorreoChange = onCorreoChange,
                         password = password,
                         onPasswordChange = onPasswordChange,
+                        turno = turno,
                         error = error,
                         isLoading = isLoading,
                         onSubmit = onSubmit,
@@ -280,6 +304,7 @@ private fun LoginHeader() {
         style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
         color = brandHeadingColor(),
         textAlign = TextAlign.Center,
+        modifier = Modifier.semantics { heading() },
     )
     Spacer(Modifier.height(6.dp))
     Text(
@@ -298,7 +323,9 @@ private fun LoginSuccess() {
     val verde = if (isDark) StatusGreenDark else StatusGreen
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.padding(vertical = 28.dp),
+        modifier = Modifier
+            .padding(vertical = 28.dp)
+            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
     ) {
         Icon(CobreIcons.CheckCircle, contentDescription = null, tint = verde, modifier = Modifier.size(48.dp))
         Spacer(Modifier.height(14.dp))
@@ -319,6 +346,7 @@ private fun LoginForm(
     onCorreoChange: (String) -> Unit,
     password: String,
     onPasswordChange: (String) -> Unit,
+    turno: TurnoPlanta,
     error: String?,
     isLoading: Boolean,
     onSubmit: () -> Unit,
@@ -334,7 +362,8 @@ private fun LoginForm(
                     .fillMaxWidth()
                     .padding(bottom = 14.dp)
                     .background(rojo.copy(alpha = 0.10f), RoundedCornerShape(12.dp))
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                    .padding(horizontal = 12.dp, vertical = 10.dp)
+                    .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -342,7 +371,6 @@ private fun LoginForm(
                 Text(error.orEmpty(), style = MaterialTheme.typography.bodySmall, color = rojo)
             }
         }
-
         LoginField(
             value = correo,
             onValueChange = onCorreoChange,
@@ -355,7 +383,6 @@ private fun LoginForm(
             ),
         )
         Spacer(Modifier.height(16.dp))
-
         LoginField(
             value = password,
             onValueChange = onPasswordChange,
@@ -368,19 +395,12 @@ private fun LoginForm(
             ),
             keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { onSubmit() }),
         )
+        Spacer(Modifier.height(12.dp))
+        TurnoDetectadoBanner(turno = turno)
         Spacer(Modifier.height(8.dp))
-
-        // Texto clickeable simple, no TextButton: este último fuerza un alto
-        // mínimo táctil (~40dp) que hacía ver todo apretado. El padding en el
-        // propio clickable amplía el área táctil a ~40dp sin agrandar el texto.
         val haptic = LocalHapticFeedback.current
         var aviso by remember { mutableStateOf(false) }
-        LaunchedEffect(aviso) {
-            if (aviso) {
-                delay(2000)
-                aviso = false
-            }
-        }
+        LaunchedEffect(aviso) { if (aviso) { delay(2000); aviso = false } }
         val olvideInteraction = remember { MutableInteractionSource() }
         Text(
             "¿Olvidaste tu contraseña?",
@@ -388,7 +408,7 @@ private fun LoginForm(
             color = Copper600,
             modifier = Modifier
                 .align(Alignment.End)
-                .clickable(interactionSource = olvideInteraction, indication = null) {
+                .clickable(interactionSource = olvideInteraction, indication = null, role = Role.Button) {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     aviso = true
                 }
@@ -399,12 +419,10 @@ private fun LoginForm(
                 "Disponible próximamente",
                 style = MaterialTheme.typography.labelSmall,
                 color = brandMutedColor(),
-                modifier = Modifier.align(Alignment.End),
+                modifier = Modifier.align(Alignment.End).semantics { liveRegion = LiveRegionMode.Polite },
             )
         }
-
         Spacer(Modifier.height(16.dp))
-
         val interaction = remember { MutableInteractionSource() }
         Button(
             onClick = onSubmit,
@@ -420,11 +438,53 @@ private fun LoginForm(
             colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, disabledContainerColor = Color.Transparent),
         ) {
             if (isLoading) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp).semantics { contentDescription = "Verificando credenciales" },
+                    color = Color.White,
+                    strokeWidth = 2.dp,
+                )
             } else {
                 Text("Ingresar", style = MaterialTheme.typography.labelLarge, color = Color.White, fontWeight = FontWeight.Bold)
             }
         }
+    }
+}
+
+@Composable
+private fun TurnoDetectadoBanner(turno: TurnoPlanta) {
+    val isDark = cobreIsDark()
+    val accent = if (isDark) Brand400 else Brand500
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(accent.copy(alpha = if (isDark) 0.14f else 0.08f))
+            .border(1.dp, accent.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
+            .padding(horizontal = 12.dp, vertical = 9.dp)
+            .semantics(mergeDescendants = true) {
+                contentDescription = "Turno de planta asignado automáticamente: ${turno.etiqueta}, horario ${turno.horario}"
+            },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(CobreIcons.Schedule, contentDescription = null, tint = accent, modifier = Modifier.size(16.dp))
+            Text(
+                "${turno.etiqueta} (${turno.horario})",
+                style = MaterialTheme.typography.labelMedium,
+                color = brandHeadingColor(),
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        Text(
+            "Automático",
+            style = MaterialTheme.typography.labelSmall,
+            color = accent,
+            fontWeight = FontWeight.Bold,
+        )
     }
 }
 

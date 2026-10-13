@@ -1,11 +1,6 @@
 package com.elcobre.lavanderiaelcobre.ui.screens.escaner
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -24,10 +19,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -40,36 +34,35 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.elcobre.lavanderiaelcobre.data.model.Pedido
-import com.elcobre.lavanderiaelcobre.ui.components.BrandCtaGradient
 import com.elcobre.lavanderiaelcobre.ui.components.CobreBackground
 import com.elcobre.lavanderiaelcobre.ui.components.CobreIcons
 import com.elcobre.lavanderiaelcobre.ui.components.GlassCard
+import com.elcobre.lavanderiaelcobre.ui.components.QrScannerView
 import com.elcobre.lavanderiaelcobre.ui.components.brandHeadingColor
 import com.elcobre.lavanderiaelcobre.ui.components.brandMutedColor
 import com.elcobre.lavanderiaelcobre.ui.components.cobreFieldColors
 import com.elcobre.lavanderiaelcobre.ui.components.pressableScale
 import com.elcobre.lavanderiaelcobre.ui.theme.Brand400
-import com.elcobre.lavanderiaelcobre.ui.theme.Brand500
 import com.elcobre.lavanderiaelcobre.ui.theme.Brand700
-import com.elcobre.lavanderiaelcobre.ui.theme.Copper600
 import com.elcobre.lavanderiaelcobre.ui.theme.Copper700
 import com.elcobre.lavanderiaelcobre.ui.theme.DarkOnSurface
-import com.elcobre.lavanderiaelcobre.ui.theme.DarkOutline
 import com.elcobre.lavanderiaelcobre.ui.theme.DarkSurface2
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusRed
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusRedDark
 import com.elcobre.lavanderiaelcobre.ui.theme.cobreIsDark
-
-import com.elcobre.lavanderiaelcobre.ui.components.QrScannerView
 
 /** Escáner real de comandas con búsqueda manual de respaldo. */
 @Composable
@@ -78,6 +71,7 @@ fun EscanerScreen(
     buscarComanda: (String) -> Pedido?,
     buscarRemota: (String, (Pedido) -> Unit, () -> Unit) -> Unit,
     onEscanearQr: (String, onResult: (errorMsg: String?) -> Unit) -> Unit,
+    onEscanearInsumo: (String, onResult: (errorMsg: String?) -> Unit) -> Unit,
     onAbrir: (Pedido) -> Unit,
 ) {
     var codigo by remember { mutableStateOf("") }
@@ -101,8 +95,8 @@ fun EscanerScreen(
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             EncabezadoSimple(
-                titulo = "Escanear comanda",
-                subtitulo = "Apunta al código QR del pedido",
+                titulo = "Escanear QR",
+                subtitulo = "Apunta al QR de una comanda o un insumo",
                 onVolver = onVolver,
             )
 
@@ -133,8 +127,14 @@ fun EscanerScreen(
                                         isScanning = true // Reanudar escaneo si falló
                                     }
                                 }
+                            } else if (extraerQrInsumo(rawUrl) != null) {
+                                isScanning = false
+                                error = "Buscando insumo…"
+                                onEscanearInsumo(rawUrl) { errorMsg ->
+                                    if (errorMsg != null) { error = errorMsg; isScanning = true }
+                                }
                             } else {
-                                error = "Código QR inválido. Escanea el comprobante oficial."
+                                error = "Código QR inválido. Escanea una comanda oficial o un QR de insumo."
                             }
                         }
                     )
@@ -162,7 +162,8 @@ fun EscanerScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(rojo.copy(alpha = 0.10f), RoundedCornerShape(12.dp))
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                        .semantics { liveRegion = LiveRegionMode.Polite },
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
@@ -180,9 +181,15 @@ private fun EntradaManual(
     onCodigoChange: (String) -> Unit,
     onAbrir: () -> Unit,
 ) {
+    val habilitado = codigo.isNotBlank()
     GlassCard(modifier = Modifier.fillMaxWidth(), elevation = 10.dp) {
         Column {
-            Text("¿No escanea?", style = MaterialTheme.typography.titleSmall, color = brandHeadingColor())
+            Text(
+                "¿No escanea?",
+                style = MaterialTheme.typography.titleSmall,
+                color = brandHeadingColor(),
+                modifier = Modifier.semantics { heading() },
+            )
             Spacer(Modifier.height(2.dp))
             Text(
                 "Ingresa el código de comanda manualmente.",
@@ -198,32 +205,44 @@ private fun EntradaManual(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),
-                leadingIcon = { Icon(CobreIcons.Inventory, contentDescription = null, tint = Brand700, modifier = Modifier.size(20.dp)) },
-                keyboardOptions = KeyboardOptions.Default,
+                leadingIcon = {
+                    Icon(CobreIcons.Inventory, contentDescription = null, tint = Brand700, modifier = Modifier.size(20.dp))
+                },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(
+                    onSearch = { if (habilitado) onAbrir() },
+                ),
                 colors = cobreFieldColors(),
             )
             Spacer(Modifier.height(12.dp))
             val interaction = remember { MutableInteractionSource() }
             val isDark = cobreIsDark()
             val accent = if (isDark) Brand400 else Copper700
+            val contentTint = if (habilitado) accent else brandMutedColor()
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .pressableScale(interaction)
                     .clip(RoundedCornerShape(14.dp))
-                    .background(accent.copy(alpha = if (isDark) 0.18f else 0.12f))
+                    .background(accent.copy(alpha = if (habilitado) (if (isDark) 0.18f else 0.12f) else 0.06f))
+                    .semantics(mergeDescendants = true) { role = Role.Button }
                     .clickable(
                         interactionSource = interaction,
                         indication = null,
-                        enabled = codigo.isNotBlank(),
+                        enabled = habilitado,
                     ) { onAbrir() }
                     .padding(vertical = 14.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(CobreIcons.ArrowForward, contentDescription = null, tint = accent, modifier = Modifier.size(18.dp))
+                Icon(CobreIcons.ArrowForward, contentDescription = null, tint = contentTint, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Abrir comanda", style = MaterialTheme.typography.labelLarge, color = accent, fontWeight = FontWeight.Bold)
+                Text(
+                    "Abrir comanda",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = contentTint,
+                    fontWeight = FontWeight.Bold,
+                )
             }
         }
     }
@@ -242,9 +261,10 @@ internal fun EncabezadoSimple(
         Box(
             modifier = Modifier
                 .pressableScale(interaction)
-                .size(46.dp)
+                .size(48.dp)
                 .clip(RoundedCornerShape(14.dp))
                 .background(if (isDark) DarkSurface2 else Color.White.copy(alpha = 0.6f))
+                .semantics { role = Role.Button }
                 .clickable(interactionSource = interaction, indication = null) { onVolver() },
             contentAlignment = Alignment.Center,
         ) {
@@ -257,8 +277,14 @@ internal fun EncabezadoSimple(
         }
         Spacer(Modifier.width(12.dp))
         Column {
-            Text(titulo, style = MaterialTheme.typography.headlineMedium, color = brandHeadingColor())
+            Text(
+                titulo,
+                style = MaterialTheme.typography.headlineMedium,
+                color = brandHeadingColor(),
+                modifier = Modifier.semantics { heading() },
+            )
             Text(subtitulo, style = MaterialTheme.typography.bodyMedium, color = brandMutedColor())
         }
     }
 }
+

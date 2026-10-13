@@ -47,6 +47,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -530,10 +534,15 @@ fun SelectableChip(label: String, seleccionado: Boolean, onClick: () -> Unit) {
             .clip(RoundedCornerShape(12.dp))
             .background(fondo)
             .border(1.dp, borde, RoundedCornerShape(12.dp))
+            .semantics(mergeDescendants = true) {
+                role = Role.Tab
+                selected = seleccionado
+            }
             .clickable(interactionSource = interaction, indication = null) { onClick() }
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = 16.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = texto, fontWeight = FontWeight.SemiBold)
     }
 }
+

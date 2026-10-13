@@ -103,6 +103,8 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
   
     public val getInsumoPorQr: GetInsumoPorQrQuery
   
+    public val getInsumosOperario: GetInsumosOperarioQuery
+  
     public val getInventario: GetInventarioQuery
   
     public val getMiComandaGuardada: GetMiComandaGuardadaQuery
@@ -358,6 +360,10 @@ private class ExampleConnectorImpl(
       GetInsumoPorQrQueryImpl(this)
     }
   
+    override val getInsumosOperario by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GetInsumosOperarioQueryImpl(this)
+    }
+  
     override val getInventario by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetInventarioQueryImpl(this)
     }
@@ -512,6 +518,7 @@ private class ExampleConnectorImpl(
         getFichasClientes,
         getIncidencias,
         getInsumoPorQr,
+        getInsumosOperario,
         getInventario,
         getMiComandaGuardada,
         getMiPerfil,
@@ -1286,6 +1293,21 @@ private class GetInsumoPorQrQueryImpl(
     GetInsumoPorQrQuery.Companion.operationName,
     GetInsumoPorQrQuery.Companion.dataDeserializer,
     GetInsumoPorQrQuery.Companion.variablesSerializer,
+  )
+
+
+private class GetInsumosOperarioQueryImpl(
+  connector: ExampleConnector
+):
+  GetInsumosOperarioQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      GetInsumosOperarioQuery.Data,
+      GetInsumosOperarioQuery.Variables
+  >(
+    connector,
+    GetInsumosOperarioQuery.Companion.operationName,
+    GetInsumosOperarioQuery.Companion.dataDeserializer,
+    GetInsumosOperarioQuery.Companion.variablesSerializer,
   )
 
 

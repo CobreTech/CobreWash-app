@@ -48,6 +48,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -226,9 +232,10 @@ private fun Encabezado(
         Box(
             modifier = Modifier
                 .pressableScale(interaction)
-                .size(46.dp)
+                .size(48.dp)
                 .clip(RoundedCornerShape(14.dp))
                 .background(if (backDark) DarkSurface2 else Color.White.copy(alpha = 0.6f))
+                .semantics { role = Role.Button }
                 .clickable(interactionSource = interaction, indication = null) { onVolver() },
             contentAlignment = Alignment.Center,
         ) {
@@ -253,7 +260,12 @@ private fun Encabezado(
         }
         Spacer(Modifier.width(12.dp))
         Column {
-            Text(pedido.comanda, style = MaterialTheme.typography.headlineMedium, color = brandHeadingColor())
+            Text(
+                pedido.comanda,
+                style = MaterialTheme.typography.headlineMedium,
+                color = brandHeadingColor(),
+                modifier = Modifier.semantics { heading() },
+            )
             Text(pedido.cliente, style = MaterialTheme.typography.bodyMedium, color = brandMutedColor())
         }
     }
@@ -482,7 +494,16 @@ private fun BotonAlerta(tipo: TipoAlerta, onClick: () -> Unit, modifier: Modifie
             .pressableScale(interaction)
             .clip(RoundedCornerShape(14.dp))
             .background(color.copy(alpha = 0.12f))
-            .then(if (enabled) Modifier.clickable(interactionSource = interaction, indication = null) { onClick() } else Modifier)
+            .semantics(mergeDescendants = true) { role = Role.Button }
+            .then(
+                if (enabled) {
+                    Modifier.clickable(
+                        interactionSource = interaction,
+                        indication = null,
+                        onClickLabel = "Reportar ${tipo.displayName}",
+                    ) { onClick() }
+                } else Modifier,
+            )
             .padding(vertical = 14.dp, horizontal = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -510,7 +531,7 @@ private fun AlertaBanner(
         visible = alerta != null,
         enter = slideInVertically(tween(400)) { -it } + fadeIn(tween(400)),
         exit = slideOutVertically(tween(300)) { -it } + fadeOut(tween(300)),
-        modifier = modifier,
+        modifier = modifier.semantics { liveRegion = LiveRegionMode.Polite },
     ) {
         val tipo = alerta ?: TipoAlerta.RETRASO
         val color = alertaColor(tipo)
@@ -539,3 +560,4 @@ private fun AlertaBanner(
         }
     }
 }
+

@@ -48,13 +48,19 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import com.elcobre.lavanderiaelcobre.data.mock.MockData
-import com.elcobre.lavanderiaelcobre.data.model.Insumo
 import com.elcobre.lavanderiaelcobre.ui.components.CobreBackHandler
 import com.elcobre.lavanderiaelcobre.ui.components.CobreBackdrop
 import com.elcobre.lavanderiaelcobre.ui.components.CobreIcons
@@ -89,6 +95,7 @@ fun CobreApp() {
         if (vm.operario != null) {
             while (true) {
                 kotlinx.coroutines.delay(30_000)
+                vm.sincronizarTurnoAutomatico()
                 vm.refrescarComandas()
             }
         }
@@ -148,14 +155,21 @@ fun CobreApp() {
             vm.errorOperacion?.let { mensaje ->
                 Text(
                     mensaje,
-                    modifier = Modifier.align(Alignment.TopCenter).padding(16.dp)
-                        .background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(12.dp)).padding(12.dp),
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(16.dp)
+                        .background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(12.dp))
+                        .padding(12.dp)
+                        .semantics { liveRegion = LiveRegionMode.Polite },
                     color = MaterialTheme.colorScheme.onErrorContainer,
                 )
             }
             if (vm.cargando && vm.pedidos.isEmpty()) {
                 androidx.compose.material3.CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center), color = Brand400,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .semantics { contentDescription = "Cargando datos de planta" },
+                    color = Brand400,
                 )
             }
         }
@@ -169,6 +183,7 @@ private fun ActualizarAvisosVisibles(vm: CobreViewModel) {
         if (vm.operario != null) lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 vm.refrescarAvisos()
+                vm.inventario.refrescar()
                 kotlinx.coroutines.delay(30_000)
             }
         }
@@ -275,16 +290,20 @@ private fun EscanerDestino(vm: CobreViewModel) {
             )
         },
         onAbrir = { pedido -> vm.navegar(Pantalla.Detalle(pedido.id)) },
+        onEscanearInsumo = { codigo, onResult ->
+            vm.inventario.escanear(codigo) { error ->
+                if (error == null) vm.navegar(Pantalla.Insumos) else onResult(error)
+            }
+        },
     )
 }
 
 @Composable
 private fun InsumosDestino(destino: Pantalla, vm: CobreViewModel) {
+    LaunchedEffect(vm.sesion) { vm.inventario.refrescar() }
     OperarioScaffold(destino, vm) { isTablet ->
         InsumosScreen(
-            insumos = Insumo.entries,
-            alertas = vm.alertasStock,
-            onCrear = { insumo, severidad, nota -> vm.crearAlertaStock(insumo, severidad, nota) },
+            inventario = vm.inventario,
             applySystemBarsInsets = !isTablet,
         )
     }
@@ -399,8 +418,8 @@ private fun OperarioScaffold(
                         onSeleccionarTab = onSeleccionarTab,
                         onEscanearQR = onEscanearQR,
                         comandasActivas = vm.pedidos.count { !it.esFinal },
-                        avisosCount = vm.totalAvisos,
-                        alertasStockCount = vm.alertasStock.size,
+                        avisosCount = vm.avisosNoLeidos,
+                        alertasStockCount = vm.inventario.insumos.count { it.estado != "OK" },
                         operarioNombre = vm.operario?.nombre ?: "Operario Planta",
                         operarioRol = vm.operario?.turno ?: "Turno Mañana",
                         onCerrarSesion = { vm.cerrarSesion() },
@@ -414,7 +433,8 @@ private fun OperarioScaffold(
                         modoTema = vm.modoTema,
                         onToggleTema = { vm.alternarTema(isDark) },
                         showSearch = false,
-                        alertasCount = vm.pedidos.count { it.estaBloqueado },
+                        alertasCount = vm.pedidos.count { it.estaBloqueado } + vm.avisosNoLeidos,
+                        onAlertasClick = { vm.navegar(Pantalla.Avisos) },
                         onMenuClick = { sidebarVisible = !sidebarVisible },
                     )
                     Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -431,7 +451,7 @@ private fun OperarioScaffold(
                 contentWindowInsets = WindowInsets(0, 0, 0, 0),
                 bottomBar = {
                     BottomAppBar(containerColor = MaterialTheme.colorScheme.surface) {
-                        BottomNavRow(tabActual, onSeleccionarTab, onEscanearQR)
+                        BottomNavRow(tabActual, onSeleccionarTab, onEscanearQR, avisosNoLeidos = vm.avisosNoLeidos)
                     }
                 },
             ) { padding ->
@@ -453,6 +473,7 @@ private fun BottomNavRow(
     tabActual: Pantalla,
     onSeleccionarTab: (Pantalla) -> Unit,
     onEscanearQR: () -> Unit,
+    avisosNoLeidos: Int = 0,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp),
@@ -469,6 +490,7 @@ private fun BottomNavRow(
             icon = navItems[1].icon,
             label = navItems[1].label,
             seleccionado = tabActual == navItems[1].pantalla,
+            badgeCount = avisosNoLeidos,
             onClick = { onSeleccionarTab(navItems[1].pantalla) },
             modifier = Modifier.weight(1f),
         )
@@ -498,16 +520,20 @@ private fun QrTabButton(onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
     Box(
         modifier = Modifier
-            .size(46.dp)
+            .size(48.dp)
             .pressableScale(interaction)
             .clip(RoundedCornerShape(50))
             .background(Brand500)
+            .semantics {
+                role = Role.Button
+                contentDescription = "Escanear código QR"
+            }
             .clickable(interactionSource = interaction, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             CobreIcons.QrCodeScanner,
-            contentDescription = "Escanear QR",
+            contentDescription = null,
             tint = Color.White,
             modifier = Modifier.size(24.dp),
         )
@@ -521,19 +547,48 @@ private fun NavTabButton(
     seleccionado: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    badgeCount: Int = 0,
 ) {
     val accent = if (seleccionado) Brand500 else MaterialTheme.colorScheme.onSurfaceVariant
     val interaction = remember { MutableInteractionSource() }
+    val desc = if (badgeCount > 0) "$label, $badgeCount sin leer" else label
     Column(
         modifier = modifier
             .padding(horizontal = 3.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(if (seleccionado) Brand500.copy(alpha = 0.11f) else Color.Transparent)
+            .semantics(mergeDescendants = true) {
+                role = Role.Tab
+                selected = seleccionado
+                contentDescription = desc
+            }
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
-            .padding(vertical = 7.dp),
+            .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Icon(icon, contentDescription = label, tint = accent, modifier = Modifier.size(22.dp))
+        Box(contentAlignment = Alignment.TopEnd) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = accent,
+                modifier = Modifier.padding(horizontal = 6.dp).size(22.dp),
+            )
+            if (badgeCount > 0) {
+                Box(
+                    modifier = Modifier
+                        .background(Brand500, RoundedCornerShape(50))
+                        .padding(horizontal = 5.dp, vertical = 1.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = if (badgeCount > 9) "9+" else badgeCount.toString(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                    )
+                }
+            }
+        }
         Text(label, style = MaterialTheme.typography.labelSmall, color = accent)
     }
 }
+

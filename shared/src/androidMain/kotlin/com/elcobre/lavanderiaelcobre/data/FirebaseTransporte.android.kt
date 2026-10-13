@@ -7,10 +7,10 @@ import io.grpc.StatusRuntimeException
 import kotlin.coroutines.cancellation.CancellationException
 
 private fun mensajeTransporte(status: Status): String = when (status.code) {
-    Status.Code.NOT_FOUND -> "El servicio de comandas aún no está actualizado. Intenta nuevamente más tarde."
+    Status.Code.NOT_FOUND -> "El servicio de datos aún no está actualizado. Intenta nuevamente más tarde."
     Status.Code.UNAUTHENTICATED -> "No se pudo validar tu sesión. Vuelve a ingresar."
     Status.Code.PERMISSION_DENIED -> "Tu cuenta no tiene permiso para realizar esta operación."
-    else -> "No se pudo conectar con el servicio de comandas. Verifica tu conexión e intenta nuevamente."
+    else -> "No se pudo conectar con Firebase. Verifica tu conexión e intenta nuevamente."
 }
 
 internal suspend fun <T> solicitud(block: suspend () -> T): T = try {
@@ -22,9 +22,9 @@ internal suspend fun <T> solicitud(block: suspend () -> T): T = try {
 } catch (error: StatusRuntimeException) {
     throw OperacionComandaException(mensajeTransporte(error.status), error)
 } catch (error: DataConnectException) {
-    throw OperacionComandaException("No se pudo guardar o consultar la comanda: ${error.message}", error)
+    throw OperacionComandaException("No se pudo guardar o consultar los datos: ${error.message}", error)
 } catch (error: IllegalArgumentException) {
-    throw OperacionComandaException("El código o los datos de la comanda son inválidos.", error)
+    throw OperacionComandaException("El código o los datos son inválidos.", error)
 } catch (error: IllegalStateException) {
-    throw OperacionComandaException("No se pudo completar la operación de la comanda.", error)
+    throw OperacionComandaException("No se pudo completar la operación.", error)
 }

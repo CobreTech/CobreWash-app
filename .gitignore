@@ -31,3 +31,28 @@ secrets.properties
 .claude/
 CLAUDE.md
 .artifacts/
+
+# IDEs y editores adicionales
+.vscode/
+*.ipr
+*.iws
+
+# Sistema operativo
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# Logs y volcados
+*.log
+*.hprof
+hs_err_pid*
+replay_pid*
+
+# Paquetes generados y binarios temporales
+*.apk
+*.aab
+
+# Documentos temporales o descargas locales en la raíz
+/*.pdf
+

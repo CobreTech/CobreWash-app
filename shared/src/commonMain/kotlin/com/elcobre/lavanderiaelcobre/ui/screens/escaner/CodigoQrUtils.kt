@@ -14,3 +14,8 @@ fun extraerCodigoQr(raw: String): String? {
     }
     return null
 }
+
+/** El código QR de Insumo es su UUID de catálogo; no es una URL de seguimiento de comanda. */
+fun extraerQrInsumo(raw: String): String? = raw.trim().takeIf {
+    it.matches(Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"))
+}

@@ -80,9 +80,9 @@ val connector: ExampleConnector = ExampleConnector.getInstance(
 ### ExampleConnector - Query and Mutation Properties
 
 The `example` Data Connect connector defines
-27 queries and
+28 queries and
 37 mutations,
-a total of 64 operations.
+a total of 65 operations.
 Each of these operations is exposed
 as a property of [ExampleConnector].
 

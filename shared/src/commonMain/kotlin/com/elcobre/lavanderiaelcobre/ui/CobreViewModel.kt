@@ -15,17 +15,15 @@ import com.elcobre.lavanderiaelcobre.data.AvisosRepository
 import com.elcobre.lavanderiaelcobre.data.FirebaseAvisosRepository
 import com.elcobre.lavanderiaelcobre.data.FirebaseComandasRepository
 import com.elcobre.lavanderiaelcobre.data.OperacionComandaException
-import com.elcobre.lavanderiaelcobre.data.mock.MockData
-import com.elcobre.lavanderiaelcobre.data.mock.RelojMock
 import com.elcobre.lavanderiaelcobre.data.model.Administrador
-import com.elcobre.lavanderiaelcobre.data.model.AlertaStock
 import com.elcobre.lavanderiaelcobre.data.model.Aviso
-import com.elcobre.lavanderiaelcobre.data.model.Insumo
 import com.elcobre.lavanderiaelcobre.data.model.Operario
 import com.elcobre.lavanderiaelcobre.data.model.Pedido
 import com.elcobre.lavanderiaelcobre.data.model.Sesion
-import com.elcobre.lavanderiaelcobre.data.model.SeveridadStock
+import com.elcobre.lavanderiaelcobre.data.InventarioRepository
+import com.elcobre.lavanderiaelcobre.data.FirebaseInventarioRepository
 import com.elcobre.lavanderiaelcobre.data.model.TipoAlerta
+import com.elcobre.lavanderiaelcobre.data.model.TurnoPlanta
 import com.elcobre.lavanderiaelcobre.ui.theme.ModoTema
 
 /** Destinos de nivel superior: navegar a uno de estos reemplaza la pila en vez de apilar (semántica de bottom-nav). */
@@ -38,7 +36,7 @@ private val TABS: Set<Pantalla> = setOf(
 )
 
 /**
- * Dueño del estado de la app del Operario: pedidos, avisos, alertas de stock,
+ * Dueño del estado de la app del Operario: pedidos, avisos, catálogo de insumos,
  * sesión y navegación son responsabilidades cohesivas de un mismo flujo, así que
  * superan el umbral por defecto de funciones por clase a propósito (el estado de
  * vehículos, que pertenece a una sesión de rol distinto, vive aparte en
@@ -51,8 +49,10 @@ class CobreViewModel(
     private val repository: ComandasRepository = FirebaseComandasRepository(),
     private val scopeOverride: CoroutineScope? = null,
     private val avisosRepository: AvisosRepository = FirebaseAvisosRepository(),
+    inventarioRepository: InventarioRepository = FirebaseInventarioRepository(),
 ) : ViewModel() {
     private val scope get() = scopeOverride ?: viewModelScope
+    val inventario = InventarioState(scope, inventarioRepository)
     var errorOperacion by mutableStateOf<String?>(null)
         private set
     var cargando by mutableStateOf(false)
@@ -74,6 +74,16 @@ class CobreViewModel(
     var errorAvisos by mutableStateOf<String?>(null)
         private set
     private var limiteAvisos = 20
+    private var idsAvisosVistos by mutableStateOf<Set<String>>(emptySet())
+    private var avisosInicializados = false
+    private var idsComandasConocidas = setOf<String>()
+    private var comandasInicializadas = false
+
+    val avisosNoLeidos: Int get() = avisos.count { it.id !in idsAvisosVistos }
+
+    fun marcarAvisosComoLeidos() {
+        idsAvisosVistos = idsAvisosVistos + avisos.map { it.id }
+    }
 
     fun refrescarAvisos(mas: Boolean = false) {
         if (operario == null || cargandoAvisos) return
@@ -85,11 +95,7 @@ class CobreViewModel(
         scope.launch {
             try {
                 val resultado = avisosRepository.consultar(0, limite)
-                if (inicio == generacion) {
-                    avisos = resultado.avisos.distinctBy { it.id }
-                    totalAvisos = resultado.total
-                    limiteAvisos = limite
-                }
+                if (inicio == generacion) aplicarResultadoAvisos(resultado.avisos, resultado.total, limite, mas)
             } catch (error: OperacionComandaException) {
                 if (inicio == generacion) errorAvisos = error.message ?: "No se pudieron cargar los avisos. Intenta nuevamente."
             } finally {
@@ -98,23 +104,31 @@ class CobreViewModel(
         }
     }
 
+    private fun aplicarResultadoAvisos(recibidos: List<Aviso>, total: Int, limite: Int, mas: Boolean) {
+        val previos = avisos.map { it.id }.toSet()
+        val nuevos = recibidos.distinctBy { it.id }
+        if (avisosInicializados && !mas) {
+            nuevos.firstOrNull { it.id !in previos }?.let { recienLlegado ->
+                notificarEventoPlanta("Nuevo aviso de administración", recienLlegado.titulo)
+            }
+        }
+        avisos = nuevos
+        totalAvisos = total
+        limiteAvisos = limite
+        avisosInicializados = true
+        if (pantalla == Pantalla.Avisos) marcarAvisosComoLeidos()
+    }
+
     private fun limpiarAvisos() {
         avisos = emptyList()
         totalAvisos = 0
         limiteAvisos = 20
         cargandoAvisos = false
         errorAvisos = null
+        idsAvisosVistos = emptySet()
+        avisosInicializados = false
     }
 
-    private val _alertasStock: SnapshotStateList<AlertaStock> =
-        mutableStateListOf<AlertaStock>().apply { addAll(MockData.alertasStockIniciales()) }
-
-    /** Alertas de stock reportadas por el operario (RF-AN05), más reciente primero. */
-    val alertasStock: List<AlertaStock> get() = _alertasStock
-
-    // Contador monotónico independiente de la posición en la lista: a diferencia
-    // de derivar el id de `lista.size`, no colisiona si algún día se agrega borrado.
-    private var alertaStockContador = _alertasStock.size
 
     var sesion by mutableStateOf<Sesion?>(null)
         private set
@@ -129,6 +143,22 @@ class CobreViewModel(
 
     fun alternarTema(esOscuroActual: Boolean) {
         modoTema = if (esOscuroActual) ModoTema.CLARO else ModoTema.OSCURO
+    }
+
+    fun cambiarTurno(nuevoTurno: String) {
+        val actual = operario ?: return
+        val limpio = nuevoTurno.trim()
+        if (limpio.isEmpty() || actual.turno == limpio) return
+        sesion = Sesion.DeOperario(actual.copy(turno = limpio))
+        refrescarComandas()
+    }
+
+    fun sincronizarTurnoAutomatico() {
+        val actual = operario ?: return
+        val turnoCalculado = TurnoPlanta.turnoActual().etiqueta
+        if (actual.turno != turnoCalculado) {
+            cambiarTurno(turnoCalculado)
+        }
     }
 
     // Pila de navegación real (no solo la pantalla actual): vive en el ViewModel para
@@ -149,6 +179,7 @@ class CobreViewModel(
         } else {
             _backStack.add(destino)
         }
+        if (destino == Pantalla.Avisos) marcarAvisosComoLeidos()
     }
 
     val puedeVolver: Boolean get() = _backStack.size > 1
@@ -163,8 +194,11 @@ class CobreViewModel(
         scope.coroutineContext.cancelChildren()
         operaciones.clear()
         _pedidos.clear()
+        idsComandasConocidas = emptySet()
+        comandasInicializadas = false
         sesion = s
         limpiarAvisos()
+        inventario.cambiarSesion(s is Sesion.DeOperario)
 
         val destino = when (s) {
             is Sesion.DeOperario -> {
@@ -218,7 +252,10 @@ class CobreViewModel(
         repository.cerrarSesion()
         _pedidos.clear()
         operaciones.clear()
+        idsComandasConocidas = emptySet()
+        comandasInicializadas = false
         limpiarAvisos()
+        inventario.cambiarSesion(false)
         errorOperacion = null
         cargando = false
         qrPendiente = null
@@ -252,6 +289,13 @@ class CobreViewModel(
         val antes = revision
         val remotas = repository.asignadas()
         if (antes == revision) {
+            if (comandasInicializadas) {
+                remotas.firstOrNull { it.id !in idsComandasConocidas && !it.esFinal }?.let { nueva ->
+                    notificarEventoPlanta("Nueva comanda asignada", "${nueva.comanda} · ${nueva.cliente}")
+                }
+            }
+            idsComandasConocidas = remotas.map { it.id }.toSet()
+            comandasInicializadas = true
             val abierto = (pantalla as? Pantalla.Detalle)?.pedidoId?.let(::pedido)
             _pedidos.clear()
             _pedidos.addAll(remotas)
@@ -306,21 +350,6 @@ class CobreViewModel(
         repository.detalle(id)?.let(::actualizarPedido)
     }
 
-    /** RF-AN05: inserta al frente (más reciente primero). */
-    fun crearAlertaStock(insumo: Insumo, severidad: SeveridadStock, nota: String) {
-        alertaStockContador += 1
-        _alertasStock.add(
-            0,
-            AlertaStock(
-                id = "AS${alertaStockContador.toString().padStart(2, '0')}",
-                insumo = insumo,
-                severidad = severidad,
-                nota = nota.trim(),
-                hora = RelojMock.ahora(),
-                autor = autor(),
-            ),
-        )
-    }
 
     fun pedidoPorComanda(codigo: String): Pedido? {
         val q = codigo.trim()
@@ -334,5 +363,4 @@ class CobreViewModel(
             ?: _pedidos.firstOrNull { !it.esFinal }
             ?: _pedidos.firstOrNull()
 
-    private fun autor(): String = operario?.nombre ?: administrador?.nombre ?: MockData.operario.nombre
 }
