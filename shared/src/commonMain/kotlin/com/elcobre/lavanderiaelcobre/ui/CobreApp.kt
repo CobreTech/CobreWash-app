@@ -60,6 +60,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
+import com.elcobre.lavanderiaelcobre.data.FirebaseVehiculosRepository
 import com.elcobre.lavanderiaelcobre.data.mock.MockData
 import com.elcobre.lavanderiaelcobre.ui.components.CobreBackHandler
 import com.elcobre.lavanderiaelcobre.ui.components.CobreBackdrop
@@ -311,11 +312,25 @@ private fun InsumosDestino(destino: Pantalla, vm: CobreViewModel) {
 
 @Composable
 private fun VehiculosDestino(vm: CobreViewModel) {
-    val vehiculosVm: VehiculosViewModel = viewModel { VehiculosViewModel() }
+    val vehiculosVm: VehiculosViewModel = viewModel { VehiculosViewModel(repository = FirebaseVehiculosRepository()) }
     val administrador = vm.administrador ?: MockData.administrador
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+
+    LaunchedEffect(vm.sesion, lifecycle) {
+        vehiculosVm.cambiarSesion(vm.administrador != null)
+        if (vm.administrador != null) {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (true) {
+                    vehiculosVm.refrescarFlota()
+                    kotlinx.coroutines.delay(30_000)
+                }
+            }
+        }
+    }
+
     VehiculosScreen(
         administrador = administrador,
-        vehiculos = vehiculosVm.vehiculos,
+        vehiculos = vehiculosVm.vehiculosFiltrados,
         chequeoEnRuta = { id -> vehiculosVm.chequeoEnRuta(id) },
         historialVehiculo = { id -> vehiculosVm.historialVehiculo(id) },
         onRegistrarSalida = { id, km, fotos, obs ->
@@ -323,7 +338,32 @@ private fun VehiculosDestino(vm: CobreViewModel) {
         },
         onRegistrarEntrada = { id, km, fotos, obs -> vehiculosVm.registrarEntradaVehiculo(id, km, fotos, obs) },
         onAgregarVehiculo = { patente, modelo, km -> vehiculosVm.registrarVehiculo(patente, modelo, km) },
-        onCerrarSesion = { vm.cerrarSesion() },
+        onCerrarSesion = {
+            vehiculosVm.cambiarSesion(false)
+            vm.cerrarSesion()
+        },
+        conductores = vehiculosVm.conductores,
+        kpis = vehiculosVm.kpis,
+        filtroActual = vehiculosVm.filtro,
+        busqueda = vehiculosVm.busqueda,
+        cargando = vehiculosVm.cargando,
+        operacionEnCurso = vehiculosVm.operacionEnCurso,
+        error = vehiculosVm.error,
+        mensajeExito = vehiculosVm.mensajeExito,
+        onCambiarBusqueda = { vehiculosVm.actualizarBusqueda(it) },
+        onSeleccionarFiltro = { vehiculosVm.seleccionarFiltro(it) },
+        onRefrescar = { vehiculosVm.refrescarFlota() },
+        onLimpiarMensajes = { vehiculosVm.limpiarMensajes() },
+        onCambiarEstadoVehiculo = { id, activo -> vehiculosVm.cambiarEstadoVehiculo(id, activo) },
+        onRegistrarVehiculoDetallado = { patente, marca, modelo, anio, km ->
+            vehiculosVm.registrarVehiculo(patente = patente, modelo = modelo, kilometrajeInicial = km, marca = marca, anio = anio)
+        },
+        onRegistrarSalidaDetallada = { id, repartidorId, responsable, km, estado, fotos, obs ->
+            vehiculosVm.registrarSalidaVehiculo(id, km, fotos, obs, responsable, repartidorId, estado)
+        },
+        onRegistrarEntradaDetallada = { id, km, estado, fotos, obs ->
+            vehiculosVm.registrarEntradaVehiculo(id, km, fotos, obs, estado)
+        },
     )
 }
 
