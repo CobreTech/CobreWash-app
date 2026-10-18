@@ -1,5 +1,6 @@
 package com.elcobre.lavanderiaelcobre
 
+import com.elcobre.lavanderiaelcobre.data.auth.SesionPersistente
 import com.elcobre.lavanderiaelcobre.data.estadoTrasCompletar
 import com.elcobre.lavanderiaelcobre.data.model.Operario
 import com.elcobre.lavanderiaelcobre.data.model.Sesion
@@ -8,6 +9,8 @@ import com.elcobre.lavanderiaelcobre.ui.screens.escaner.extraerCodigoQr
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -16,6 +19,9 @@ import kotlin.test.assertNotNull
 @OptIn(ExperimentalCoroutinesApi::class)
 class FlujoFirebaseTest {
     private val sesion = Sesion.DeOperario(Operario("Test", "Operario", "Mañana"))
+
+    @BeforeTest fun setUp() { SesionPersistente.limpiar() }
+    @AfterTest fun tearDown() { SesionPersistente.limpiar() }
 
     @Test fun cerrarSesion_desconectaYBorraDatos() = runTest {
         val repo = FakeComandasRepository()

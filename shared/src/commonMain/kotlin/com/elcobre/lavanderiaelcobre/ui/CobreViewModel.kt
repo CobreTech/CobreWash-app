@@ -22,8 +22,10 @@ import com.elcobre.lavanderiaelcobre.data.model.Pedido
 import com.elcobre.lavanderiaelcobre.data.model.Sesion
 import com.elcobre.lavanderiaelcobre.data.InventarioRepository
 import com.elcobre.lavanderiaelcobre.data.FirebaseInventarioRepository
+import com.elcobre.lavanderiaelcobre.data.auth.SesionPersistente
 import com.elcobre.lavanderiaelcobre.data.model.TipoAlerta
 import com.elcobre.lavanderiaelcobre.data.model.TurnoPlanta
+import com.elcobre.lavanderiaelcobre.ui.screens.login.sesionParaRol
 import com.elcobre.lavanderiaelcobre.ui.theme.ModoTema
 
 /** Destinos de nivel superior: navegar a uno de estos reemplaza la pila en vez de apilar (semántica de bottom-nav). */
@@ -182,11 +184,42 @@ class CobreViewModel(
         if (destino == Pantalla.Avisos) marcarAvisosComoLeidos()
     }
 
-    val puedeVolver: Boolean get() = _backStack.size > 1
+    val puedeVolver: Boolean get() {
+        if (sesion != null && _backStack.size == 2 && _backStack.first() == Pantalla.Login) {
+            return false
+        }
+        return _backStack.size > 1
+    }
 
-    /** Regresa al destino ,anterior real de la pila; no hace nada si ya está en la raíz. */
+    /** Regresa al destino anterior real de la pila; no hace nada si ya está en la raíz ni al login con sesión activa. */
     internal fun volver() {
-        if (_backStack.size > 1) _backStack.removeAt(_backStack.lastIndex)
+        if (_backStack.size > 1) {
+            if (sesion != null && _backStack.size == 2 && _backStack.first() == Pantalla.Login) {
+                return
+            }
+            _backStack.removeAt(_backStack.lastIndex)
+        }
+    }
+
+    fun restaurarSesionSiExiste() {
+        val guardada = SesionPersistente.obtener() ?: return
+        val turnoEncontrado = guardada.turno?.let { et ->
+            TurnoPlanta.entries.firstOrNull {
+                it.etiqueta.equals(et, ignoreCase = true) || it.corto.equals(et, ignoreCase = true)
+            }
+        } ?: TurnoPlanta.turnoActual()
+        val sesionRestaurada = sesionParaRol(
+            rolNombre = guardada.rol,
+            nombre = guardada.nombre,
+            turno = turnoEncontrado,
+        )
+        if (sesionRestaurada != null) {
+            iniciarSesion(sesionRestaurada)
+        }
+    }
+
+    init {
+        restaurarSesionSiExiste()
     }
 
     fun iniciarSesion(s: Sesion) {
@@ -250,6 +283,7 @@ class CobreViewModel(
         generacion++
         scope.coroutineContext.cancelChildren()
         repository.cerrarSesion()
+        SesionPersistente.limpiar()
         _pedidos.clear()
         operaciones.clear()
         idsComandasConocidas = emptySet()

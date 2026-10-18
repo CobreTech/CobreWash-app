@@ -1,5 +1,7 @@
 package com.elcobre.lavanderiaelcobre
 
+import com.elcobre.lavanderiaelcobre.data.auth.DatosSesionGuardada
+import com.elcobre.lavanderiaelcobre.data.auth.SesionPersistente
 import com.elcobre.lavanderiaelcobre.data.model.Administrador
 import com.elcobre.lavanderiaelcobre.data.model.EtapaProceso
 import com.elcobre.lavanderiaelcobre.data.model.Operario
@@ -9,6 +11,8 @@ import com.elcobre.lavanderiaelcobre.data.model.TurnoPlanta
 import com.elcobre.lavanderiaelcobre.ui.CobreViewModel
 import com.elcobre.lavanderiaelcobre.ui.Pantalla
 import com.elcobre.lavanderiaelcobre.ui.screens.login.sesionParaRol
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -19,6 +23,16 @@ import kotlin.test.assertTrue
 /** Tests de [CobreViewModel]: sesión, pila de navegación y mutaciones de pedidos/alertas. */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class CobreViewModelTest {
+    @BeforeTest
+    fun setUp() {
+        SesionPersistente.limpiar()
+    }
+
+    @AfterTest
+    fun tearDown() {
+        SesionPersistente.limpiar()
+    }
+
     private fun crearViewModel(): CobreViewModel {
         val vm = CobreViewModel(FakeComandasRepository(),
             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.test.UnconfinedTestDispatcher()))
@@ -50,6 +64,52 @@ class CobreViewModelTest {
         vm.cerrarSesion()
         assertEquals(Pantalla.Login, vm.pantalla)
         assertNull(vm.sesion)
+    }
+
+    @Test
+    fun restaurarSesionSiExiste_conSesionGuardada_iniciaSesionAutomaticamente() {
+        SesionPersistente.guardar(
+            DatosSesionGuardada(
+                email = "admin@cobre.cl",
+                nombre = "Admin Flota",
+                rol = "admin",
+            ),
+        )
+        val vm = crearViewModel()
+        vm.restaurarSesionSiExiste()
+
+        assertEquals(Pantalla.Vehiculos, vm.pantalla)
+        assertNotNull(vm.administrador)
+        assertEquals("Admin Flota", vm.administrador?.nombre)
+        SesionPersistente.limpiar()
+    }
+
+    @Test
+    fun cerrarSesion_limpiaSesionPersistente() {
+        SesionPersistente.guardar(
+            DatosSesionGuardada(
+                email = "operario@cobre.cl",
+                nombre = "Operario Planta",
+                rol = "operario",
+                turno = "Turno Mañana",
+            ),
+        )
+        val vm = crearViewModel()
+        vm.iniciarSesion(operario)
+        vm.cerrarSesion()
+
+        assertNull(SesionPersistente.obtener())
+    }
+
+    @Test
+    fun volver_conSesionActiva_noRegresaALogin() {
+        val vm = crearViewModel()
+        vm.iniciarSesion(operario)
+        assertEquals(Pantalla.Dashboard, vm.pantalla)
+        assertFalse(vm.puedeVolver)
+
+        vm.volver()
+        assertEquals(Pantalla.Dashboard, vm.pantalla)
     }
 
     @Test

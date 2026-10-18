@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -36,6 +37,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -80,6 +82,7 @@ import com.elcobre.lavanderiaelcobre.data.model.esPatenteChilenaValida
 import com.elcobre.lavanderiaelcobre.data.model.esRolConductorORepartidor
 import com.elcobre.lavanderiaelcobre.data.model.normalizarPatenteChilena
 import com.elcobre.lavanderiaelcobre.ui.components.BrandCtaGradient
+import com.elcobre.lavanderiaelcobre.ui.components.CobreBackHandler
 import com.elcobre.lavanderiaelcobre.ui.components.CobreBackground
 import com.elcobre.lavanderiaelcobre.ui.components.CobreIcons
 import com.elcobre.lavanderiaelcobre.ui.components.CobreTopBar
@@ -162,6 +165,15 @@ fun VehiculosScreen(
     var vehiculoChequeoModal by remember { mutableStateOf<Vehiculo?>(null) }
     var vehiculoHistorialModal by remember { mutableStateOf<Vehiculo?>(null) }
     var mostrandoAltaModal by remember { mutableStateOf(false) }
+
+    val algunModalAbierto = vehiculoChequeoModal != null || vehiculoHistorialModal != null || mostrandoAltaModal
+    CobreBackHandler(enabled = algunModalAbierto) {
+        when {
+            vehiculoChequeoModal != null -> vehiculoChequeoModal = null
+            vehiculoHistorialModal != null -> vehiculoHistorialModal = null
+            mostrandoAltaModal -> mostrandoAltaModal = false
+        }
+    }
 
     LaunchedEffect(mensajeExito) {
         if (mensajeExito != null) {
@@ -1071,6 +1083,8 @@ private fun ModalAgregarVehiculo(
     val habilitado = patente.isNotBlank() && modelo.isNotBlank() &&
         km != null && km >= 0 && errorPatente == null && !anioInvalido
 
+    CobreBackHandler(enabled = true, onBack = onDismiss)
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = if (isDark) DarkSurface1 else Color(0xFFFBF8F5),
@@ -1237,6 +1251,7 @@ private fun ModalHistorialVehiculo(
     onDismiss: () -> Unit,
 ) {
     val isDark = cobreIsDark()
+    CobreBackHandler(enabled = true, onBack = onDismiss)
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = if (isDark) DarkSurface1 else Color(0xFFFBF8F5),
@@ -1403,6 +1418,8 @@ private fun ModalChequeoVehiculo(
     }
     val kmMinimo = if (esEntrada) chequeo.kmSalida ?: vehiculo.kilometrajeActual else vehiculo.kilometrajeActual
 
+    CobreBackHandler(enabled = true, onBack = onDismiss)
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = if (isDark) DarkSurface1 else Color(0xFFFBF8F5),
@@ -1442,6 +1459,7 @@ private fun ModalChequeoVehiculo(
                 kmMinimo = kmMinimo,
                 conductores = conductores,
                 responsablePorDefecto = chequeo?.responsable ?: administradorNombre,
+                onDismiss = onDismiss,
                 onConfirmar = onConfirmar,
             )
             Spacer(Modifier.height(16.dp))
@@ -1457,6 +1475,7 @@ private fun ChequeoForm(
     kmMinimo: Int,
     conductores: List<ConductorFlota>,
     responsablePorDefecto: String,
+    onDismiss: () -> Unit,
     onConfirmar: (
         repartidorId: String?,
         responsable: String,
@@ -1466,6 +1485,7 @@ private fun ChequeoForm(
         observaciones: String?,
     ) -> Unit,
 ) {
+    CobreBackHandler(enabled = true, onBack = onDismiss)
     val conductoresHabilitados = remember(conductores) {
         conductores.filter { esRolConductorORepartidor(it.rol) }
     }
@@ -1531,24 +1551,42 @@ private fun ChequeoForm(
         )
 
         Spacer(Modifier.height(14.dp))
-        BotonConfirmarChequeo(
-            accent = accent,
-            esEntrada = esEntrada,
-            habilitado = habilitado,
-            onClick = {
-                val kmValido = km ?: return@BotonConfirmarChequeo
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                val nombreResponsable = conductorSeleccionado?.nombreCompleto ?: responsablePorDefecto
-                onConfirmar(
-                    conductorSeleccionado?.id,
-                    nombreResponsable,
-                    kmValido,
-                    estadoSeleccionado,
-                    fotos.value,
-                    observaciones.trim().takeIf { it.isNotEmpty() },
-                )
-            },
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            OutlinedButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(50.dp),
+                shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(1.dp, brandMutedColor().copy(alpha = 0.35f)),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = brandHeadingColor()),
+            ) {
+                Text("Regresar", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+            }
+            BotonConfirmarChequeo(
+                modifier = Modifier.weight(1.5f),
+                accent = accent,
+                esEntrada = esEntrada,
+                habilitado = habilitado,
+                onClick = {
+                    val kmValido = km ?: return@BotonConfirmarChequeo
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    val nombreResponsable = conductorSeleccionado?.nombreCompleto ?: responsablePorDefecto
+                    onConfirmar(
+                        conductorSeleccionado?.id,
+                        nombreResponsable,
+                        kmValido,
+                        estadoSeleccionado,
+                        fotos.value,
+                        observaciones.trim().takeIf { it.isNotEmpty() },
+                    )
+                },
+            )
+        }
     }
 }
 
@@ -1558,12 +1596,12 @@ private fun BotonConfirmarChequeo(
     esEntrada: Boolean,
     habilitado: Boolean,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier.fillMaxWidth(),
 ) {
     Button(
         onClick = onClick,
         enabled = habilitado,
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
             .height(50.dp)
             .then(
                 if (habilitado) Modifier.background(BrandCtaGradient, RoundedCornerShape(14.dp))

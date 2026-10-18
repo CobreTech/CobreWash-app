@@ -29,6 +29,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -61,8 +63,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.elcobre.lavanderiaelcobre.data.auth.AuthRepository
 import com.elcobre.lavanderiaelcobre.data.auth.AuthResultado
+import com.elcobre.lavanderiaelcobre.data.auth.DatosSesionGuardada
 import com.elcobre.lavanderiaelcobre.data.auth.PerfilRepository
 import com.elcobre.lavanderiaelcobre.data.auth.PerfilResultado
+import com.elcobre.lavanderiaelcobre.data.auth.SesionPersistente
 import com.elcobre.lavanderiaelcobre.data.model.Administrador
 import com.elcobre.lavanderiaelcobre.data.model.Operario
 import com.elcobre.lavanderiaelcobre.data.model.Sesion
@@ -99,9 +103,9 @@ internal fun sesionParaRol(
     rolNombre: String,
     nombre: String,
     turno: TurnoPlanta = TurnoPlanta.turnoActual(),
-): Sesion? = when (rolNombre) {
-    "operario" -> Sesion.DeOperario(Operario(nombre = nombre, rol = "Operario de planta", turno = turno.etiqueta))
-    "admin" -> Sesion.DeAdministrador(Administrador(nombre = nombre))
+): Sesion? = when (rolNombre.lowercase().trim()) {
+    "operario", "operario de planta" -> Sesion.DeOperario(Operario(nombre = nombre, rol = "Operario de planta", turno = turno.etiqueta))
+    "admin", "administrador" -> Sesion.DeAdministrador(Administrador(nombre = nombre))
     else -> null // "recepcionista" y "cliente" no tienen vista en esta app.
 }
 
@@ -110,8 +114,10 @@ fun LoginScreen(
     onLogin: (Sesion) -> Unit,
     onToggleTema: () -> Unit = {},
 ) {
-    var correo by remember { mutableStateOf("") }
+    val sesionGuardada = remember { SesionPersistente.obtener() }
+    var correo by remember { mutableStateOf(sesionGuardada?.email ?: "") }
     var password by remember { mutableStateOf("") }
+    var recordarme by remember { mutableStateOf(SesionPersistente.getRecordarme()) }
     val turnoAutomatico = remember { TurnoPlanta.turnoActual() }
     var error by remember { mutableStateOf<String?>(null) }
     var visible by remember { mutableStateOf(false) }
@@ -149,12 +155,26 @@ fun LoginScreen(
                 is AuthResultado.Exito -> {
                     when (val perfil = perfilRepository.obtenerMiPerfil()) {
                         is PerfilResultado.Exito -> {
-                            val sesion = sesionParaRol(perfil.rolNombre, perfil.nombre, TurnoPlanta.turnoActual())
+                            val turno = TurnoPlanta.turnoActual()
+                            val sesion = sesionParaRol(perfil.rolNombre, perfil.nombre, turno)
                             isLoading = false
                             if (sesion == null) {
                                 authRepository.cerrarSesion()
                                 error = "Tu cuenta no tiene acceso a la app móvil."
                             } else {
+                                SesionPersistente.setRecordarme(recordarme)
+                                if (recordarme) {
+                                    SesionPersistente.guardar(
+                                        DatosSesionGuardada(
+                                            email = correo.trim(),
+                                            nombre = perfil.nombre,
+                                            rol = perfil.rolNombre,
+                                            turno = turno.etiqueta,
+                                        ),
+                                    )
+                                } else {
+                                    SesionPersistente.limpiar()
+                                }
                                 sesionLista = sesion
                                 success = true
                             }
@@ -194,6 +214,8 @@ fun LoginScreen(
                         onCorreoChange = { correo = it; error = null },
                         password = password,
                         onPasswordChange = { password = it; error = null },
+                        recordarme = recordarme,
+                        onRecordarmeChange = { recordarme = it },
                         turno = turnoAutomatico,
                         error = error,
                         isLoading = isLoading,
@@ -254,6 +276,8 @@ private fun LoginCard(
     onCorreoChange: (String) -> Unit,
     password: String,
     onPasswordChange: (String) -> Unit,
+    recordarme: Boolean,
+    onRecordarmeChange: (Boolean) -> Unit,
     turno: TurnoPlanta,
     error: String?,
     isLoading: Boolean,
@@ -280,6 +304,8 @@ private fun LoginCard(
                         onCorreoChange = onCorreoChange,
                         password = password,
                         onPasswordChange = onPasswordChange,
+                        recordarme = recordarme,
+                        onRecordarmeChange = onRecordarmeChange,
                         turno = turno,
                         error = error,
                         isLoading = isLoading,
@@ -346,6 +372,8 @@ private fun LoginForm(
     onCorreoChange: (String) -> Unit,
     password: String,
     onPasswordChange: (String) -> Unit,
+    recordarme: Boolean,
+    onRecordarmeChange: (Boolean) -> Unit,
     turno: TurnoPlanta,
     error: String?,
     isLoading: Boolean,
@@ -401,18 +429,13 @@ private fun LoginForm(
         val haptic = LocalHapticFeedback.current
         var aviso by remember { mutableStateOf(false) }
         LaunchedEffect(aviso) { if (aviso) { delay(2000); aviso = false } }
-        val olvideInteraction = remember { MutableInteractionSource() }
-        Text(
-            "¿Olvidaste tu contraseña?",
-            style = MaterialTheme.typography.labelSmall,
-            color = Copper600,
-            modifier = Modifier
-                .align(Alignment.End)
-                .clickable(interactionSource = olvideInteraction, indication = null, role = Role.Button) {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    aviso = true
-                }
-                .padding(vertical = 10.dp),
+        RecordarmeYOlvideFila(
+            recordarme = recordarme,
+            onRecordarmeChange = onRecordarmeChange,
+            onOlvideContrasena = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                aviso = true
+            },
         )
         AnimatedVisibility(visible = aviso) {
             Text(
@@ -447,6 +470,68 @@ private fun LoginForm(
                 Text("Ingresar", style = MaterialTheme.typography.labelLarge, color = Color.White, fontWeight = FontWeight.Bold)
             }
         }
+    }
+}
+
+@Composable
+private fun RecordarmeYOlvideFila(
+    recordarme: Boolean,
+    onRecordarmeChange: (Boolean) -> Unit,
+    onOlvideContrasena: () -> Unit,
+) {
+    val haptic = LocalHapticFeedback.current
+    val olvideInteraction = remember { MutableInteractionSource() }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onRecordarmeChange(!recordarme)
+                }
+                .padding(vertical = 4.dp, horizontal = 2.dp),
+        ) {
+            Checkbox(
+                checked = recordarme,
+                onCheckedChange = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onRecordarmeChange(it)
+                },
+                colors = CheckboxDefaults.colors(
+                    checkedColor = Copper600,
+                    checkmarkColor = Color.White,
+                    uncheckedColor = brandMutedColor().copy(alpha = 0.6f),
+                ),
+                modifier = Modifier.size(24.dp),
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                "Recordarme",
+                style = MaterialTheme.typography.bodySmall,
+                color = brandHeadingColor(),
+                fontWeight = FontWeight.Medium,
+            )
+        }
+        Text(
+            "¿Olvidaste tu contraseña?",
+            style = MaterialTheme.typography.labelSmall,
+            color = Copper600,
+            modifier = Modifier
+                .clickable(
+                    interactionSource = olvideInteraction,
+                    indication = null,
+                    role = Role.Button,
+                    onClick = onOlvideContrasena,
+                )
+                .padding(vertical = 4.dp),
+        )
     }
 }
 
