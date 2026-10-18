@@ -20,16 +20,22 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,14 +50,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.elcobre.lavanderiaelcobre.data.model.Administrador
 import com.elcobre.lavanderiaelcobre.data.model.ChequeoVehiculo
@@ -69,6 +83,7 @@ import com.elcobre.lavanderiaelcobre.ui.components.CobreBackground
 import com.elcobre.lavanderiaelcobre.ui.components.CobreIcons
 import com.elcobre.lavanderiaelcobre.ui.components.CobreTopBar
 import com.elcobre.lavanderiaelcobre.ui.components.GlassCard
+import com.elcobre.lavanderiaelcobre.ui.components.SelectableChip
 import com.elcobre.lavanderiaelcobre.ui.components.StatusChip
 import com.elcobre.lavanderiaelcobre.ui.components.brandHeadingColor
 import com.elcobre.lavanderiaelcobre.ui.components.brandMutedColor
@@ -77,19 +92,23 @@ import com.elcobre.lavanderiaelcobre.ui.components.pressableScale
 import com.elcobre.lavanderiaelcobre.ui.theme.Brand400
 import com.elcobre.lavanderiaelcobre.ui.theme.Brand500
 import com.elcobre.lavanderiaelcobre.ui.theme.Brand700
+import com.elcobre.lavanderiaelcobre.ui.theme.DarkOutline
+import com.elcobre.lavanderiaelcobre.ui.theme.DarkSurface1
+import com.elcobre.lavanderiaelcobre.ui.theme.DarkSurface2
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusAmber
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusAmberDark
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusGreen
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusGreenDark
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusRed
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusRedDark
+import com.elcobre.lavanderiaelcobre.ui.theme.Stone200
 import com.elcobre.lavanderiaelcobre.ui.theme.cobreIsDark
 import kotlinx.coroutines.delay
 
 private val ETIQUETAS_FOTOS = listOf("Frente", "Lateral derecho", "Lateral izquierdo", "Posterior", "Tablero / Odómetro")
 
 /**
- * Vista raíz del rol Administrador conectada a Firebase Data Connect (`RF-VE01` a `RF-VE04`):
+ * Vista del rol Administrador conectada a Firebase Data Connect (`RF-VE01` a `RF-VE04`):
  * administra el catálogo de flota, registra salidas e inspecciones previas, recibe retornos
  * con validación de odómetro y consulta la bitácora histórica con evidencia fotográfica.
  */
@@ -111,6 +130,8 @@ fun VehiculosScreen(
     operacionEnCurso: Boolean = false,
     error: String? = null,
     mensajeExito: String? = null,
+    mostrarTopBar: Boolean = true,
+    onToggleTema: (() -> Unit)? = null,
     onCambiarBusqueda: (String) -> Unit = {},
     onSeleccionarFiltro: (FiltroFlota) -> Unit = {},
     onRefrescar: () -> Unit = {},
@@ -135,9 +156,9 @@ fun VehiculosScreen(
         observaciones: String?,
     ) -> Unit = { id, km, _, fotos, obs -> onRegistrarEntrada(id, km, fotos, obs) },
 ) {
-    var panelAbierto by remember { mutableStateOf<String?>(null) }
-    var mostrandoHistorial by remember { mutableStateOf(false) }
-    var mostrandoAlta by remember { mutableStateOf(false) }
+    var vehiculoChequeoModal by remember { mutableStateOf<Vehiculo?>(null) }
+    var vehiculoHistorialModal by remember { mutableStateOf<Vehiculo?>(null) }
+    var mostrandoAltaModal by remember { mutableStateOf(false) }
 
     LaunchedEffect(mensajeExito) {
         if (mensajeExito != null) {
@@ -146,135 +167,462 @@ fun VehiculosScreen(
         }
     }
 
-    fun alternarPanel(vehiculoId: String, historial: Boolean) {
-        if (panelAbierto == vehiculoId && mostrandoHistorial == historial) {
-            panelAbierto = null
-        } else {
-            panelAbierto = vehiculoId
-            mostrandoHistorial = historial
+    CobreBackground(applySystemBarsInsets = mostrarTopBar) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            if (mostrarTopBar) {
+                TopBarAdmin(
+                    administrador = administrador,
+                    onToggleTema = onToggleTema,
+                    onCerrarSesion = onCerrarSesion,
+                )
+            }
+            ContenidoFlotaGrid(
+                vehiculos = vehiculos,
+                kpis = kpis,
+                filtroActual = filtroActual,
+                busqueda = busqueda,
+                cargando = cargando,
+                operacionEnCurso = operacionEnCurso,
+                error = error,
+                mensajeExito = mensajeExito,
+                chequeoEnRuta = chequeoEnRuta,
+                historialVehiculo = historialVehiculo,
+                onRefrescar = onRefrescar,
+                onAbrirAlta = { mostrandoAltaModal = true },
+                onLimpiarMensajes = onLimpiarMensajes,
+                onCambiarBusqueda = onCambiarBusqueda,
+                onSeleccionarFiltro = onSeleccionarFiltro,
+                onAbrirChequeo = { vehiculoChequeoModal = it },
+                onAbrirHistorial = { vehiculoHistorialModal = it },
+                onCambiarEstadoVehiculo = onCambiarEstadoVehiculo,
+            )
         }
     }
 
-    CobreBackground {
-        Column(modifier = Modifier.fillMaxSize()) {
-            TopBarAdmin(administrador = administrador, onCerrarSesion = onCerrarSesion)
-            CabeceraFlota(
-                kpis = kpis,
-                mostrandoAlta = mostrandoAlta,
-                cargando = cargando || operacionEnCurso,
-                onRefrescar = onRefrescar,
-                onToggleAlta = { mostrandoAlta = !mostrandoAlta },
-            )
-            BannersEstadoFlota(error = error, mensajeExito = mensajeExito, onLimpiar = onLimpiarMensajes)
-            AnimatedVisibility(visible = mostrandoAlta) {
-                AgregarVehiculoCard(
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-                    patentesExistentes = vehiculos.map { it.patente },
-                    onAgregar = { patente, marca, modelo, anio, km ->
-                        onRegistrarVehiculoDetallado(patente, marca, modelo, anio, km)
-                        mostrandoAlta = false
-                    },
+    if (mostrandoAltaModal) {
+        ModalAgregarVehiculo(
+            patentesExistentes = vehiculos.map { it.patente },
+            onDismiss = { mostrandoAltaModal = false },
+            onAgregar = { patente, marca, modelo, anio, km ->
+                onRegistrarVehiculoDetallado(patente, marca, modelo, anio, km)
+                mostrandoAltaModal = false
+            },
+        )
+    }
+
+    vehiculoChequeoModal?.let { vehiculo ->
+        val chequeoActivo = chequeoEnRuta(vehiculo.id)
+        ModalChequeoVehiculo(
+            vehiculo = vehiculo,
+            chequeo = chequeoActivo,
+            conductores = conductores,
+            administradorNombre = administrador.nombre,
+            onDismiss = { vehiculoChequeoModal = null },
+            onConfirmar = { repartidorId, responsable, km, estado, fotos, obs ->
+                if (chequeoActivo != null && chequeoActivo.estaEnRuta) {
+                    onRegistrarEntradaDetallada(vehiculo.id, km, estado, fotos, obs)
+                } else {
+                    onRegistrarSalidaDetallada(vehiculo.id, repartidorId, responsable, km, estado, fotos, obs)
+                }
+                vehiculoChequeoModal = null
+            },
+        )
+    }
+
+    vehiculoHistorialModal?.let { vehiculo ->
+        ModalHistorialVehiculo(
+            vehiculo = vehiculo,
+            historial = historialVehiculo(vehiculo.id),
+            onDismiss = { vehiculoHistorialModal = null },
+        )
+    }
+}
+
+@Composable
+private fun ContenidoFlotaGrid(
+    vehiculos: List<Vehiculo>,
+    kpis: KpisFlota,
+    filtroActual: FiltroFlota,
+    busqueda: String,
+    cargando: Boolean,
+    operacionEnCurso: Boolean,
+    error: String?,
+    mensajeExito: String?,
+    chequeoEnRuta: (String) -> ChequeoVehiculo?,
+    historialVehiculo: (String) -> List<ChequeoVehiculo>,
+    onRefrescar: () -> Unit,
+    onAbrirAlta: () -> Unit,
+    onLimpiarMensajes: () -> Unit,
+    onCambiarBusqueda: (String) -> Unit,
+    onSeleccionarFiltro: (FiltroFlota) -> Unit,
+    onAbrirChequeo: (Vehiculo) -> Unit,
+    onAbrirHistorial: (Vehiculo) -> Unit,
+    onCambiarEstadoVehiculo: (String, Boolean) -> Unit,
+) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val esAncho = maxWidth >= 700.dp
+        val columnas = if (esAncho) GridCells.Adaptive(minSize = 340.dp) else GridCells.Fixed(1)
+        LazyVerticalGrid(
+            columns = columnas,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 36.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                CabeceraFlota(
+                    cargando = cargando || operacionEnCurso,
+                    onRefrescar = onRefrescar,
+                    onAbrirAlta = onAbrirAlta,
                 )
             }
-            BarraFiltroFlota(
-                busqueda = busqueda,
-                filtroActual = filtroActual,
-                kpis = kpis,
-                onCambiarBusqueda = onCambiarBusqueda,
-                onSeleccionarFiltro = onSeleccionarFiltro,
-            )
-            GrillaVehiculosFlota(
-                vehiculos = vehiculos,
-                conductores = conductores,
-                administradorNombre = administrador.nombre,
-                cargando = cargando,
-                panelAbierto = panelAbierto,
-                mostrandoHistorial = mostrandoHistorial,
-                chequeoEnRuta = chequeoEnRuta,
-                historialVehiculo = historialVehiculo,
-                onAlternarPanel = ::alternarPanel,
-                onCambiarEstadoVehiculo = onCambiarEstadoVehiculo,
-                onConfirmarChequeo = { vehiculo, chequeo, repartidorId, responsable, km, estado, fotos, obs ->
-                    if (chequeo != null && chequeo.estaEnRuta) {
-                        onRegistrarEntradaDetallada(vehiculo.id, km, estado, fotos, obs)
-                    } else {
-                        onRegistrarSalidaDetallada(vehiculo.id, repartidorId, responsable, km, estado, fotos, obs)
-                    }
-                    panelAbierto = null
-                },
-            )
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                ResumenKpiFlota(
+                    kpis = kpis,
+                    filtroActual = filtroActual,
+                    esAncho = esAncho,
+                    onSeleccionarFiltro = onSeleccionarFiltro,
+                )
+            }
+            if (error != null || mensajeExito != null) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    BannersEstadoFlota(
+                        error = error,
+                        mensajeExito = mensajeExito,
+                        onLimpiar = onLimpiarMensajes,
+                    )
+                }
+            }
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                BarraFiltroFlota(
+                    busqueda = busqueda,
+                    filtroActual = filtroActual,
+                    kpis = kpis,
+                    onCambiarBusqueda = onCambiarBusqueda,
+                    onSeleccionarFiltro = onSeleccionarFiltro,
+                )
+            }
+            if (vehiculos.isEmpty()) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    EstadoVacioFlota(
+                        cargando = cargando,
+                        busqueda = busqueda,
+                        filtroActual = filtroActual,
+                        onLimpiarFiltros = {
+                            onCambiarBusqueda("")
+                            onSeleccionarFiltro(FiltroFlota.TODOS)
+                        },
+                        onRefrescar = onRefrescar,
+                    )
+                }
+            } else {
+                items(vehiculos, key = { it.id }) { vehiculo ->
+                    val chequeo = chequeoEnRuta(vehiculo.id)
+                    VehiculoCard(
+                        vehiculo = vehiculo,
+                        chequeo = chequeo,
+                        totalHistorial = historialVehiculo(vehiculo.id).size,
+                        onAbrirChequeo = { onAbrirChequeo(vehiculo) },
+                        onAbrirHistorial = { onAbrirHistorial(vehiculo) },
+                        onToggleActivo = { onCambiarEstadoVehiculo(vehiculo.id, !vehiculo.activo) },
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
 private fun CabeceraFlota(
-    kpis: KpisFlota,
-    mostrandoAlta: Boolean,
     cargando: Boolean,
     onRefrescar: () -> Unit,
-    onToggleAlta: () -> Unit,
+    onAbrirAlta: () -> Unit,
 ) {
+    val isDark = cobreIsDark()
+    val refreshInteraction = remember { MutableInteractionSource() }
+    val addInteraction = remember { MutableInteractionSource() }
+
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text("Flota de Reparto", style = MaterialTheme.typography.headlineMedium, color = brandHeadingColor())
+            Text(
+                "Flota de Reparto",
+                style = MaterialTheme.typography.headlineMedium,
+                color = brandHeadingColor(),
+                modifier = Modifier.semantics { heading() },
+            )
             Spacer(Modifier.height(2.dp))
             Text(
-                "${kpis.total} unidades · ${kpis.disponibles} disponibles · ${kpis.enRuta} en ruta",
+                "Control de unidades, despacho a ruta e inspección técnica",
                 style = MaterialTheme.typography.bodyMedium,
                 color = brandMutedColor(),
             )
         }
-        if (cargando) {
-            CircularProgressIndicator(modifier = Modifier.size(22.dp), color = Brand400, strokeWidth = 2.5.dp)
-            Spacer(Modifier.width(10.dp))
-        } else {
-            TextButton(onClick = onRefrescar) {
-                Text("Actualizar", color = Brand500, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.width(12.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .pressableScale(refreshInteraction)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(if (isDark) DarkSurface2 else Color.White.copy(alpha = 0.7f))
+                    .border(
+                        1.dp,
+                        if (isDark) DarkOutline else Stone200.copy(alpha = 0.8f),
+                        RoundedCornerShape(14.dp),
+                    )
+                    .semantics {
+                        role = Role.Button
+                        contentDescription = "Actualizar flota"
+                    }
+                    .clickable(
+                        interactionSource = refreshInteraction,
+                        indication = null,
+                        enabled = !cargando,
+                        onClick = onRefrescar,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (cargando) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = Brand400,
+                        strokeWidth = 2.2.dp,
+                    )
+                } else {
+                    Icon(
+                        CobreIcons.History,
+                        contentDescription = null,
+                        tint = if (isDark) Brand400 else Brand700,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
             }
-            Spacer(Modifier.width(6.dp))
+
+            Row(
+                modifier = Modifier
+                    .height(48.dp)
+                    .pressableScale(addInteraction)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(BrandCtaGradient)
+                    .semantics {
+                        role = Role.Button
+                        contentDescription = "Registrar nuevo vehículo"
+                    }
+                    .clickable(interactionSource = addInteraction, indication = null, onClick = onAbrirAlta)
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(CobreIcons.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                Text(
+                    "Nuevo vehículo",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
         }
-        AgregarVehiculoBoton(abierto = mostrandoAlta, onClick = onToggleAlta)
+    }
+}
+
+private data class KpiDescriptor(
+    val titulo: String,
+    val subtitulo: String,
+    val valor: String,
+    val icono: ImageVector,
+    val accent: Color,
+    val filtro: FiltroFlota,
+)
+
+@Composable
+private fun ResumenKpiFlota(
+    kpis: KpisFlota,
+    filtroActual: FiltroFlota,
+    esAncho: Boolean,
+    onSeleccionarFiltro: (FiltroFlota) -> Unit,
+) {
+    val isDark = cobreIsDark()
+    val colorTotal = if (isDark) Brand400 else Brand500
+    val colorDisponible = if (isDark) StatusGreenDark else StatusGreen
+    val colorEnRuta = if (isDark) StatusAmberDark else StatusAmber
+    val colorInactivo = if (kpis.inactivos > 0) (if (isDark) StatusRedDark else StatusRed) else brandMutedColor()
+
+    val items = listOf(
+        KpiDescriptor(
+            "Total Flota", "Unidades registradas", "${kpis.total}",
+            CobreIcons.LocalShipping, colorTotal, FiltroFlota.TODOS,
+        ),
+        KpiDescriptor(
+            "Disponibles", "Listos en planta", "${kpis.disponibles}",
+            CobreIcons.CheckCircle, colorDisponible, FiltroFlota.DISPONIBLES,
+        ),
+        KpiDescriptor(
+            "En Ruta", "Despachos activos", "${kpis.enRuta}",
+            CobreIcons.Speed, colorEnRuta, FiltroFlota.EN_RUTA,
+        ),
+        KpiDescriptor(
+            "Mantención", "Fuera de servicio", "${kpis.inactivos}",
+            CobreIcons.Warning, colorInactivo, FiltroFlota.INACTIVOS,
+        ),
+    )
+
+    if (esAncho) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            items.forEach { item ->
+                KpiFlotaCard(
+                    titulo = item.titulo,
+                    subtitulo = item.subtitulo,
+                    valor = item.valor,
+                    icono = item.icono,
+                    accent = item.accent,
+                    seleccionado = filtroActual == item.filtro,
+                    onClick = { onSeleccionarFiltro(item.filtro) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            items.chunked(2).forEach { par ->
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    par.forEach { item ->
+                        KpiFlotaCard(
+                            titulo = item.titulo,
+                            subtitulo = item.subtitulo,
+                            valor = item.valor,
+                            icono = item.icono,
+                            accent = item.accent,
+                            seleccionado = filtroActual == item.filtro,
+                            onClick = { onSeleccionarFiltro(item.filtro) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun KpiFlotaCard(
+    titulo: String,
+    subtitulo: String,
+    valor: String,
+    icono: ImageVector,
+    accent: Color,
+    seleccionado: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    GlassCard(
+        modifier = modifier
+            .pressableScale(interaction)
+            .semantics(mergeDescendants = true) { role = Role.Tab }
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+        elevation = if (seleccionado) 10.dp else 6.dp,
+        tint = accent,
+        stripe = if (seleccionado) accent else null,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    titulo,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = brandMutedColor(),
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    valor,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = accent,
+                    fontWeight = FontWeight.ExtraBold,
+                )
+                Text(
+                    subtitulo,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = brandMutedColor().copy(alpha = 0.8f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(accent.copy(alpha = 0.14f), RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(icono, contentDescription = null, tint = accent, modifier = Modifier.size(20.dp))
+            }
+        }
     }
 }
 
 @Composable
 private fun BannersEstadoFlota(error: String?, mensajeExito: String?, onLimpiar: () -> Unit) {
     val isDark = cobreIsDark()
-    AnimatedVisibility(visible = error != null) {
-        val rojo = if (isDark) StatusRedDark else StatusRed
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 6.dp)
-                .background(rojo.copy(alpha = 0.14f), RoundedCornerShape(12.dp))
-                .padding(horizontal = 14.dp, vertical = 10.dp)
-                .semantics { liveRegion = LiveRegionMode.Polite },
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(CobreIcons.ErrorOutline, contentDescription = null, tint = rojo, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(error.orEmpty(), style = MaterialTheme.typography.bodySmall, color = rojo, modifier = Modifier.weight(1f))
-            TextButton(onClick = onLimpiar) { Text("Cerrar", color = rojo) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        AnimatedVisibility(visible = error != null) {
+            val rojo = if (isDark) StatusRedDark else StatusRed
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(rojo.copy(alpha = 0.14f), RoundedCornerShape(14.dp))
+                    .border(1.dp, rojo.copy(alpha = 0.3f), RoundedCornerShape(14.dp))
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                    .semantics { liveRegion = LiveRegionMode.Polite },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(CobreIcons.ErrorOutline, contentDescription = null, tint = rojo, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    error.orEmpty(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = rojo,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = onLimpiar) {
+                    Text("Cerrar", color = rojo, fontWeight = FontWeight.Bold)
+                }
+            }
         }
-    }
-    AnimatedVisibility(visible = mensajeExito != null) {
-        val verde = if (isDark) StatusGreenDark else StatusGreen
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 6.dp)
-                .background(verde.copy(alpha = 0.14f), RoundedCornerShape(12.dp))
-                .padding(horizontal = 14.dp, vertical = 10.dp)
-                .semantics { liveRegion = LiveRegionMode.Polite },
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Icon(CobreIcons.CheckCircle, contentDescription = null, tint = verde, modifier = Modifier.size(18.dp))
-            Text(mensajeExito.orEmpty(), style = MaterialTheme.typography.labelMedium, color = verde)
+        AnimatedVisibility(visible = mensajeExito != null) {
+            val verde = if (isDark) StatusGreenDark else StatusGreen
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(verde.copy(alpha = 0.14f), RoundedCornerShape(14.dp))
+                    .border(1.dp, verde.copy(alpha = 0.3f), RoundedCornerShape(14.dp))
+                    .padding(horizontal = 14.dp, vertical = 12.dp)
+                    .semantics { liveRegion = LiveRegionMode.Polite },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(CobreIcons.CheckCircle, contentDescription = null, tint = verde, modifier = Modifier.size(18.dp))
+                Text(
+                    mensajeExito.orEmpty(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = verde,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
         }
     }
 }
@@ -287,30 +635,32 @@ private fun BarraFiltroFlota(
     onCambiarBusqueda: (String) -> Unit,
     onSeleccionarFiltro: (FiltroFlota) -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp)) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         OutlinedTextField(
             value = busqueda,
             onValueChange = onCambiarBusqueda,
-            placeholder = { Text("Buscar por patente, marca, modelo o conductor...") },
+            label = { Text("Buscar por patente, marca, modelo o conductor") },
             singleLine = true,
-            leadingIcon = { Icon(CobreIcons.Search, contentDescription = null, tint = Brand700, modifier = Modifier.size(18.dp)) },
+            leadingIcon = {
+                Icon(CobreIcons.Search, contentDescription = null, tint = Brand500, modifier = Modifier.size(20.dp))
+            },
             trailingIcon = if (busqueda.isNotEmpty()) {
                 {
-                    Icon(
-                        CobreIcons.Close,
-                        contentDescription = "Limpiar búsqueda",
-                        tint = brandMutedColor(),
-                        modifier = Modifier.size(18.dp).clickable { onCambiarBusqueda("") },
-                    )
+                    IconButton(onClick = { onCambiarBusqueda("") }) {
+                        Icon(CobreIcons.Close, contentDescription = "Limpiar búsqueda", modifier = Modifier.size(18.dp))
+                    }
                 }
             } else {
                 null
             },
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
+            shape = RoundedCornerShape(16.dp),
             colors = cobreFieldColors(),
         )
-        Spacer(Modifier.height(8.dp))
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(FiltroFlota.entries) { opcion ->
                 val cantidad = when (opcion) {
@@ -319,19 +669,65 @@ private fun BarraFiltroFlota(
                     FiltroFlota.EN_RUTA -> kpis.enRuta
                     FiltroFlota.INACTIVOS -> kpis.inactivos
                 }
-                val activo = filtroActual == opcion
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(if (activo) Brand500 else Brand500.copy(alpha = 0.10f))
-                        .clickable { onSeleccionarFiltro(opcion) }
-                        .padding(horizontal = 12.dp, vertical = 7.dp),
+                SelectableChip(
+                    label = "${opcion.etiqueta} ($cantidad)",
+                    seleccionado = filtroActual == opcion,
+                    onClick = { onSeleccionarFiltro(opcion) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EstadoVacioFlota(
+    cargando: Boolean,
+    busqueda: String,
+    filtroActual: FiltroFlota,
+    onLimpiarFiltros: () -> Unit,
+    onRefrescar: () -> Unit,
+) {
+    val hayFiltrosActivos = busqueda.isNotBlank() || filtroActual != FiltroFlota.TODOS
+    GlassCard(modifier = Modifier.fillMaxWidth(), elevation = 6.dp) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 20.dp)
+                .semantics { liveRegion = LiveRegionMode.Polite },
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            if (cargando) {
+                CircularProgressIndicator(color = Brand400)
+                Text(
+                    "Sincronizando flota de vehículos…",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = brandMutedColor(),
+                    textAlign = TextAlign.Center,
+                )
+            } else {
+                Icon(
+                    imageVector = CobreIcons.LocalShipping,
+                    contentDescription = null,
+                    tint = Brand500,
+                    modifier = Modifier.size(32.dp),
+                )
+                Text(
+                    text = if (hayFiltrosActivos) {
+                        "No hay vehículos que coincidan con el filtro seleccionado."
+                    } else {
+                        "No hay vehículos registrados en la flota."
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = brandMutedColor(),
+                    textAlign = TextAlign.Center,
+                )
+                TextButton(
+                    onClick = if (hayFiltrosActivos) onLimpiarFiltros else onRefrescar,
                 ) {
                     Text(
-                        "${opcion.etiqueta} ($cantidad)",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (activo) Color.White else Brand500,
-                        fontWeight = FontWeight.SemiBold,
+                        if (hayFiltrosActivos) "Limpiar filtros" else "Actualizar flota",
+                        fontWeight = FontWeight.Bold,
                     )
                 }
             }
@@ -340,90 +736,300 @@ private fun BarraFiltroFlota(
 }
 
 @Composable
-private fun GrillaVehiculosFlota(
-    vehiculos: List<Vehiculo>,
-    conductores: List<ConductorFlota>,
-    administradorNombre: String,
-    cargando: Boolean,
-    panelAbierto: String?,
-    mostrandoHistorial: Boolean,
-    chequeoEnRuta: (String) -> ChequeoVehiculo?,
-    historialVehiculo: (String) -> List<ChequeoVehiculo>,
-    onAlternarPanel: (String, Boolean) -> Unit,
-    onCambiarEstadoVehiculo: (String, Boolean) -> Unit,
-    onConfirmarChequeo: (
-        Vehiculo,
-        ChequeoVehiculo?,
-        String?,
-        String,
-        Int,
-        EstadoCondicionVehiculo,
-        List<FotoChequeo>,
-        String?,
-    ) -> Unit,
+private fun TopBarAdmin(
+    administrador: Administrador,
+    onToggleTema: (() -> Unit)?,
+    onCerrarSesion: () -> Unit,
 ) {
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        if (vehiculos.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-                if (cargando) {
-                    CircularProgressIndicator(color = Brand400)
-                } else {
-                    Text(
-                        "No hay vehículos que coincidan con el filtro seleccionado.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = brandMutedColor(),
-                    )
-                }
+    CobreTopBar(
+        nombre = administrador.nombre,
+        subtitulo = administrador.rol,
+        onCerrarSesion = onCerrarSesion,
+        onToggleTema = onToggleTema,
+    ) {
+        Box(
+            modifier = Modifier.size(40.dp).background(BrandCtaGradient, RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                administrador.nombre.trim().take(1).uppercase().ifEmpty { "A" },
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
+}
+
+@Composable
+private fun VehiculoCard(
+    vehiculo: Vehiculo,
+    chequeo: ChequeoVehiculo?,
+    totalHistorial: Int,
+    onAbrirChequeo: () -> Unit,
+    onAbrirHistorial: () -> Unit,
+    onToggleActivo: () -> Unit,
+) {
+    val enRuta = chequeo != null && chequeo.estaEnRuta
+    val isDark = cobreIsDark()
+    val accent = when {
+        enRuta -> if (isDark) StatusAmberDark else StatusAmber
+        vehiculo.activo -> if (isDark) StatusGreenDark else StatusGreen
+        else -> if (isDark) StatusRedDark else StatusRed
+    }
+    val etiquetaEstado = when {
+        enRuta -> "En ruta"
+        vehiculo.activo -> "Disponible"
+        else -> "Mantención"
+    }
+
+    GlassCard(
+        modifier = Modifier.fillMaxWidth(),
+        tint = accent,
+        stripe = accent,
+        elevation = 8.dp,
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            CabeceraTarjetaVehiculo(vehiculo = vehiculo, accent = accent, etiquetaEstado = etiquetaEstado)
+            MetadatosTarjetaVehiculo(vehiculo = vehiculo, chequeo = chequeo, accent = accent)
+            AccionesTarjetaVehiculo(
+                activo = vehiculo.activo,
+                enRuta = enRuta,
+                accent = accent,
+                totalHistorial = totalHistorial,
+                onAbrirChequeo = onAbrirChequeo,
+                onAbrirHistorial = onAbrirHistorial,
+                onToggleActivo = onToggleActivo,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CabeceraTarjetaVehiculo(vehiculo: Vehiculo, accent: Color, etiquetaEstado: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .background(accent.copy(alpha = 0.15f), RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(CobreIcons.LocalShipping, contentDescription = null, tint = accent, modifier = Modifier.size(24.dp))
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                vehiculo.patente,
+                style = MaterialTheme.typography.titleMedium,
+                color = brandHeadingColor(),
+                fontWeight = FontWeight.ExtraBold,
+            )
+            Text(
+                vehiculo.nombreCompleto,
+                style = MaterialTheme.typography.bodyMedium,
+                color = brandMutedColor(),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        StatusChip(
+            label = etiquetaEstado,
+            container = accent.copy(alpha = 0.16f),
+            content = accent,
+        )
+    }
+}
+
+@Composable
+private fun MetadatosTarjetaVehiculo(vehiculo: Vehiculo, chequeo: ChequeoVehiculo?, accent: Color) {
+    val isDark = cobreIsDark()
+    val infoBg = if (isDark) DarkSurface2.copy(alpha = 0.65f) else Color.White.copy(alpha = 0.55f)
+    val infoBorder = if (isDark) DarkOutline else Stone200.copy(alpha = 0.7f)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(infoBg)
+            .border(1.dp, infoBorder, RoundedCornerShape(12.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(CobreIcons.Speed, contentDescription = null, tint = Brand500, modifier = Modifier.size(16.dp))
+                Text(
+                    "Odómetro: ${vehiculo.kilometrajeActual} km",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = brandHeadingColor(),
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            vehiculo.anio?.let { anio ->
+                Text(
+                    "Año $anio",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = brandMutedColor(),
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
+        if (chequeo != null && chequeo.estaEnRuta) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Icon(CobreIcons.Person, contentDescription = null, tint = accent, modifier = Modifier.size(15.dp))
+                Text(
+                    "En ruta: ${chequeo.responsable} · Salida ${chequeo.horaSalida ?: "En curso"}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = accent,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         } else {
-            val columnas = if (maxWidth >= 720.dp) GridCells.Adaptive(minSize = 340.dp) else GridCells.Fixed(1)
-            LazyVerticalGrid(
-                columns = columnas,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 32.dp, top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+            Text(
+                text = if (vehiculo.activo) {
+                    vehiculo.descripcion?.takeIf { it.isNotBlank() } ?: "Unidad operativa disponible en planta"
+                } else {
+                    "Unidad fuera de servicio por mantención preventiva"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = brandMutedColor(),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AccionesTarjetaVehiculo(
+    activo: Boolean,
+    enRuta: Boolean,
+    accent: Color,
+    totalHistorial: Int,
+    onAbrirChequeo: () -> Unit,
+    onAbrirHistorial: () -> Unit,
+    onToggleActivo: () -> Unit,
+) {
+    val isDark = cobreIsDark()
+    val secondaryBg = if (isDark) DarkSurface2 else Color.White.copy(alpha = 0.75f)
+    val secondaryBorder = if (isDark) DarkOutline else Stone200
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (activo || enRuta) {
+            BotonPrincipalTarjetaVehiculo(
+                enRuta = enRuta,
+                accent = accent,
+                isDark = isDark,
+                onClick = onAbrirChequeo,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        val historialInteraction = remember { MutableInteractionSource() }
+        Row(
+            modifier = Modifier
+                .height(44.dp)
+                .pressableScale(historialInteraction)
+                .clip(RoundedCornerShape(12.dp))
+                .background(secondaryBg)
+                .border(1.dp, secondaryBorder, RoundedCornerShape(12.dp))
+                .clickable(interactionSource = historialInteraction, indication = null, onClick = onAbrirHistorial)
+                .padding(horizontal = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(CobreIcons.History, contentDescription = null, tint = Brand500, modifier = Modifier.size(16.dp))
+            Text(
+                if (totalHistorial > 0) "Bitácora ($totalHistorial)" else "Bitácora",
+                style = MaterialTheme.typography.labelMedium,
+                color = brandHeadingColor(),
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+            )
+        }
+        if (!enRuta) {
+            val mantencionInteraction = remember { MutableInteractionSource() }
+            val colorTexto = if (activo) brandMutedColor() else (if (isDark) StatusGreenDark else StatusGreen)
+            Row(
+                modifier = Modifier
+                    .height(44.dp)
+                    .pressableScale(mantencionInteraction)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(secondaryBg)
+                    .border(1.dp, secondaryBorder, RoundedCornerShape(12.dp))
+                    .clickable(interactionSource = mantencionInteraction, indication = null, onClick = onToggleActivo)
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                items(vehiculos, key = { it.id }) { vehiculo ->
-                    val chequeo = chequeoEnRuta(vehiculo.id)
-                    VehiculoCard(
-                        vehiculo = vehiculo,
-                        chequeo = chequeo,
-                        historial = historialVehiculo(vehiculo.id),
-                        conductores = conductores,
-                        administradorNombre = administradorNombre,
-                        panelChequeoAbierto = panelAbierto == vehiculo.id && !mostrandoHistorial,
-                        panelHistorialAbierto = panelAbierto == vehiculo.id && mostrandoHistorial,
-                        onToggleChequeo = { onAlternarPanel(vehiculo.id, false) },
-                        onToggleHistorial = { onAlternarPanel(vehiculo.id, true) },
-                        onToggleActivo = { onCambiarEstadoVehiculo(vehiculo.id, !vehiculo.activo) },
-                        onConfirmar = { repartidorId, responsable, km, estado, fotos, obs ->
-                            onConfirmarChequeo(vehiculo, chequeo, repartidorId, responsable, km, estado, fotos, obs)
-                        },
-                    )
-                }
+                Text(
+                    if (activo) "Mantención" else "Habilitar",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colorTexto,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun AgregarVehiculoBoton(abierto: Boolean, onClick: () -> Unit) {
+private fun BotonPrincipalTarjetaVehiculo(
+    enRuta: Boolean,
+    accent: Color,
+    isDark: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val interaction = remember { MutableInteractionSource() }
-    Box(
-        modifier = Modifier
-            .size(46.dp)
+    val colorContenido = if (enRuta) accent else Color.White
+    Row(
+        modifier = modifier
+            .height(44.dp)
             .pressableScale(interaction)
-            .clip(RoundedCornerShape(14.dp))
-            .background(Brand500.copy(alpha = 0.12f))
-            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
-        contentAlignment = Alignment.Center,
+            .clip(RoundedCornerShape(12.dp))
+            .then(
+                if (enRuta) {
+                    Modifier.background(accent.copy(alpha = if (isDark) 0.22f else 0.15f))
+                        .border(1.dp, accent.copy(alpha = 0.45f), RoundedCornerShape(12.dp))
+                } else {
+                    Modifier.background(BrandCtaGradient)
+                },
+            )
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
+            .padding(horizontal = 12.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            if (abierto) CobreIcons.Close else CobreIcons.Add,
-            contentDescription = if (abierto) "Cerrar formulario" else "Agregar vehículo",
-            tint = Brand500,
-            modifier = Modifier.size(22.dp),
+            imageVector = if (enRuta) CobreIcons.CheckCircle else CobreIcons.LocalShipping,
+            contentDescription = null,
+            tint = colorContenido,
+            modifier = Modifier.size(17.dp),
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            if (enRuta) "Registrar retorno" else "Dar salida",
+            style = MaterialTheme.typography.labelLarge,
+            color = colorContenido,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
         )
     }
 }
@@ -439,11 +1045,12 @@ private fun diagnosticarPatenteAlta(patente: String, patentesExistentes: List<St
     }
 }
 
-/** RF-VE01: alta de un vehículo nuevo a la flota con validación de patente chilena. */
+/** RF-VE01: modal de alta de un vehículo nuevo a la flota con validación de patente chilena. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AgregarVehiculoCard(
-    modifier: Modifier = Modifier,
+private fun ModalAgregarVehiculo(
     patentesExistentes: List<String>,
+    onDismiss: () -> Unit,
     onAgregar: (patente: String, marca: String, modelo: String, anio: Int?, km: Int) -> Unit,
 ) {
     var patente by remember { mutableStateOf("") }
@@ -452,6 +1059,7 @@ private fun AgregarVehiculoCard(
     var anioTexto by remember { mutableStateOf("") }
     var kmTexto by remember { mutableStateOf("0") }
     val haptic = LocalHapticFeedback.current
+    val isDark = cobreIsDark()
 
     val km = kmTexto.toIntOrNull()
     val anio = anioTexto.trim().takeIf { it.isNotEmpty() }?.toIntOrNull()
@@ -460,10 +1068,40 @@ private fun AgregarVehiculoCard(
     val habilitado = patente.isNotBlank() && modelo.isNotBlank() &&
         km != null && km >= 0 && errorPatente == null && !anioInvalido
 
-    GlassCard(modifier = modifier.fillMaxWidth(), elevation = 10.dp) {
-        Column {
-            Text("Registrar vehículo en flota", style = MaterialTheme.typography.titleSmall, color = brandHeadingColor())
-            Spacer(Modifier.height(10.dp))
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = if (isDark) DarkSurface1 else Color(0xFFFBF8F5),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Registrar vehículo en flota",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = brandHeadingColor(),
+                        fontWeight = FontWeight.ExtraBold,
+                        modifier = Modifier.semantics { heading() },
+                    )
+                    Text(
+                        "Ingresa los datos técnicos y odómetro inicial de la unidad.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = brandMutedColor(),
+                    )
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(CobreIcons.Close, contentDescription = "Cerrar", tint = brandMutedColor())
+                }
+            }
             CamposAgregarVehiculo(
                 patente = patente,
                 marca = marca,
@@ -478,22 +1116,17 @@ private fun AgregarVehiculoCard(
                 onAnioChange = { anioTexto = it.filter(Char::isDigit).take(4) },
                 onKmChange = { kmTexto = it.filter(Char::isDigit) },
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(4.dp))
             Button(
                 onClick = {
                     val kmValido = km ?: return@Button
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     onAgregar(normalizarPatenteChilena(patente), marca, modelo, anio, kmValido)
-                    patente = ""
-                    marca = ""
-                    modelo = ""
-                    anioTexto = ""
-                    kmTexto = "0"
                 },
                 enabled = habilitado,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp)
+                    .height(50.dp)
                     .then(
                         if (habilitado) Modifier.background(BrandCtaGradient, RoundedCornerShape(14.dp))
                         else Modifier.background(Brand500.copy(alpha = 0.30f), RoundedCornerShape(14.dp)),
@@ -502,8 +1135,16 @@ private fun AgregarVehiculoCard(
                 elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, disabledContainerColor = Color.Transparent),
             ) {
-                Text("Agregar a la flota", style = MaterialTheme.typography.labelLarge, color = Color.White, fontWeight = FontWeight.Bold)
+                Icon(CobreIcons.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "Agregar a la flota",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                )
             }
+            Spacer(Modifier.height(16.dp))
         }
     }
 }
@@ -535,7 +1176,6 @@ private fun CamposAgregarVehiculo(
         shape = RoundedCornerShape(14.dp),
         colors = cobreFieldColors(),
     )
-    Spacer(Modifier.height(8.dp))
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         OutlinedTextField(
             value = marca,
@@ -558,7 +1198,6 @@ private fun CamposAgregarVehiculo(
             colors = cobreFieldColors(),
         )
     }
-    Spacer(Modifier.height(8.dp))
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         OutlinedTextField(
             value = anioTexto,
@@ -586,233 +1225,87 @@ private fun CamposAgregarVehiculo(
     }
 }
 
+/** RF-VE04: modal con historial de salidas/regresos con kilometraje, fotos y comentarios. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TopBarAdmin(administrador: Administrador, onCerrarSesion: () -> Unit) {
-    CobreTopBar(
-        nombre = administrador.nombre,
-        subtitulo = administrador.rol,
-        onCerrarSesion = onCerrarSesion,
-    ) {
-        Box(
-            modifier = Modifier.size(40.dp).background(BrandCtaGradient, RoundedCornerShape(12.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(CobreIcons.Person, contentDescription = null, tint = Color.White, modifier = Modifier.size(26.dp))
-        }
-    }
-}
-
-@Composable
-private fun VehiculoCard(
+private fun ModalHistorialVehiculo(
     vehiculo: Vehiculo,
-    chequeo: ChequeoVehiculo?,
     historial: List<ChequeoVehiculo>,
-    conductores: List<ConductorFlota>,
-    administradorNombre: String,
-    panelChequeoAbierto: Boolean,
-    panelHistorialAbierto: Boolean,
-    onToggleChequeo: () -> Unit,
-    onToggleHistorial: () -> Unit,
-    onToggleActivo: () -> Unit,
-    onConfirmar: (
-        repartidorId: String?,
-        responsable: String,
-        km: Int,
-        estado: EstadoCondicionVehiculo,
-        fotos: List<FotoChequeo>,
-        observaciones: String?,
-    ) -> Unit,
-) {
-    val enRuta = chequeo != null && chequeo.estaEnRuta
-    val isDark = cobreIsDark()
-    val accent = when {
-        enRuta -> if (isDark) StatusAmberDark else StatusAmber
-        vehiculo.activo -> if (isDark) StatusGreenDark else StatusGreen
-        else -> brandMutedColor()
-    }
-    val etiquetaEstado = when {
-        enRuta -> "En ruta"
-        vehiculo.activo -> "Disponible"
-        else -> "Mantención"
-    }
-
-    GlassCard(modifier = Modifier.fillMaxWidth(), tint = accent, elevation = 12.dp) {
-        Column {
-            CabeceraTarjetaVehiculo(vehiculo = vehiculo, accent = accent, etiquetaEstado = etiquetaEstado)
-            Spacer(Modifier.height(10.dp))
-            MetadatosTarjetaVehiculo(vehiculo = vehiculo, chequeo = chequeo)
-            Spacer(Modifier.height(14.dp))
-            AccionesTarjetaVehiculo(
-                activo = vehiculo.activo,
-                enRuta = enRuta,
-                accent = accent,
-                totalHistorial = historial.size,
-                onToggleChequeo = onToggleChequeo,
-                onToggleHistorial = onToggleHistorial,
-                onToggleActivo = onToggleActivo,
-            )
-            AnimatedVisibility(visible = panelChequeoAbierto) {
-                ChequeoForm(
-                    accent = accent,
-                    esEntrada = enRuta,
-                    kmMinimo = if (enRuta) chequeo.kmSalida ?: vehiculo.kilometrajeActual else vehiculo.kilometrajeActual,
-                    conductores = conductores,
-                    responsablePorDefecto = chequeo?.responsable ?: administradorNombre,
-                    onConfirmar = onConfirmar,
-                )
-            }
-            AnimatedVisibility(visible = panelHistorialAbierto) {
-                HistorialVehiculo(historial)
-            }
-        }
-    }
-}
-
-@Composable
-private fun CabeceraTarjetaVehiculo(vehiculo: Vehiculo, accent: Color, etiquetaEstado: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .background(accent.copy(alpha = 0.16f), RoundedCornerShape(12.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(CobreIcons.LocalShipping, contentDescription = null, tint = accent, modifier = Modifier.size(24.dp))
-        }
-        Spacer(Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(vehiculo.patente, style = MaterialTheme.typography.titleMedium, color = brandHeadingColor())
-            Text(vehiculo.nombreCompleto, style = MaterialTheme.typography.bodyMedium, color = brandMutedColor())
-        }
-        StatusChip(
-            label = etiquetaEstado,
-            container = accent.copy(alpha = 0.16f),
-            content = accent,
-        )
-    }
-}
-
-@Composable
-private fun MetadatosTarjetaVehiculo(vehiculo: Vehiculo, chequeo: ChequeoVehiculo?) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Icon(CobreIcons.Speed, contentDescription = null, tint = brandMutedColor(), modifier = Modifier.size(15.dp))
-            Text("${vehiculo.kilometrajeActual} km", style = MaterialTheme.typography.labelSmall, color = brandMutedColor())
-        }
-        if (chequeo != null && chequeo.estaEnRuta) {
-            Text(
-                "· Conductor: ${chequeo.responsable} (${chequeo.horaSalida ?: "En curso"})",
-                style = MaterialTheme.typography.labelSmall,
-                color = brandMutedColor(),
-            )
-        }
-    }
-}
-
-@Composable
-private fun AccionesTarjetaVehiculo(
-    activo: Boolean,
-    enRuta: Boolean,
-    accent: Color,
-    totalHistorial: Int,
-    onToggleChequeo: () -> Unit,
-    onToggleHistorial: () -> Unit,
-    onToggleActivo: () -> Unit,
+    onDismiss: () -> Unit,
 ) {
     val isDark = cobreIsDark()
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (activo || enRuta) {
-            val interaction = remember { MutableInteractionSource() }
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .pressableScale(interaction)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(accent.copy(alpha = if (isDark) 0.18f else 0.12f))
-                    .clickable(interactionSource = interaction, indication = null) { onToggleChequeo() }
-                    .padding(vertical = 12.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    if (enRuta) "Registrar entrada" else "Dar salida",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = accent,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        }
-        val historialInteraction = remember { MutableInteractionSource() }
-        Row(
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = if (isDark) DarkSurface1 else Color(0xFFFBF8F5),
+    ) {
+        Column(
             modifier = Modifier
-                .pressableScale(historialInteraction)
-                .clip(RoundedCornerShape(14.dp))
-                .border(1.dp, accent.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
-                .clickable(interactionSource = historialInteraction, indication = null) { onToggleHistorial() }
-                .padding(horizontal = 12.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(5.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Icon(CobreIcons.History, contentDescription = null, tint = accent, modifier = Modifier.size(16.dp))
-            Text(
-                if (totalHistorial > 0) "Historial ($totalHistorial)" else "Historial",
-                style = MaterialTheme.typography.labelLarge,
-                color = accent,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-        if (!enRuta) {
-            val mantencionInteraction = remember { MutableInteractionSource() }
             Row(
-                modifier = Modifier
-                    .pressableScale(mantencionInteraction)
-                    .clip(RoundedCornerShape(14.dp))
-                    .border(1.dp, brandMutedColor().copy(alpha = 0.35f), RoundedCornerShape(14.dp))
-                    .clickable(interactionSource = mantencionInteraction, indication = null) { onToggleActivo() }
-                    .padding(horizontal = 10.dp, vertical = 12.dp),
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text(
-                    if (activo) "Mantención" else "Habilitar",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = brandMutedColor(),
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-        }
-    }
-}
-
-/** RF-VE04: historial de salidas/regresos con kilometraje, fotos y comentarios de cada evento. */
-@Composable
-private fun HistorialVehiculo(historial: List<ChequeoVehiculo>) {
-    Column(modifier = Modifier.padding(top = 16.dp)) {
-        Box(Modifier.fillMaxWidth().height(1.dp).background(brandMutedColor().copy(alpha = 0.12f)))
-        Spacer(Modifier.height(14.dp))
-        if (historial.isEmpty()) {
-            Text(
-                "Sin registros de salida o regreso todavía.",
-                style = MaterialTheme.typography.bodySmall,
-                color = brandMutedColor(),
-            )
-        } else {
-            historial.forEachIndexed { index, chequeo ->
-                HistorialFila(chequeo)
-                if (index < historial.lastIndex) {
-                    Spacer(Modifier.height(10.dp))
-                    Box(Modifier.fillMaxWidth().height(1.dp).background(brandMutedColor().copy(alpha = 0.08f)))
-                    Spacer(Modifier.height(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Bitácora · ${vehiculo.patente}",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = brandHeadingColor(),
+                        fontWeight = FontWeight.ExtraBold,
+                        modifier = Modifier.semantics { heading() },
+                    )
+                    Text(
+                        "${vehiculo.nombreCompleto} · Odómetro actual: ${vehiculo.kilometrajeActual} km",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = brandMutedColor(),
+                    )
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(CobreIcons.Close, contentDescription = "Cerrar", tint = brandMutedColor())
                 }
             }
+            if (historial.isEmpty()) {
+                GlassCard(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
+                    Text(
+                        "Sin registros de salida o retorno todavía para esta unidad.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = brandMutedColor(),
+                    )
+                }
+            } else {
+                historial.forEach { chequeo ->
+                    GlassCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        elevation = 4.dp,
+                        contentPadding = PaddingValues(16.dp),
+                    ) {
+                        HistorialFila(chequeo)
+                    }
+                }
+            }
+            Spacer(Modifier.height(16.dp))
         }
     }
 }
 
 @Composable
 private fun HistorialFila(chequeo: ChequeoVehiculo) {
-    Column {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(chequeo.fecha, style = MaterialTheme.typography.labelMedium, color = brandHeadingColor(), fontWeight = FontWeight.Bold)
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                chequeo.fecha,
+                style = MaterialTheme.typography.labelLarge,
+                color = brandHeadingColor(),
+                fontWeight = FontWeight.Bold,
+            )
             val isDark = cobreIsDark()
             val estadoColor = if (chequeo.estaCerrado) {
                 if (isDark) StatusGreenDark else StatusGreen
@@ -825,7 +1318,6 @@ private fun HistorialFila(chequeo: ChequeoVehiculo) {
                 content = estadoColor,
             )
         }
-        Spacer(Modifier.height(6.dp))
         Text(
             "Salida: ${chequeo.kmSalida ?: "—"} km · ${chequeo.horaSalida ?: "—"} · ${chequeo.estadoSalida.etiqueta}",
             style = MaterialTheme.typography.bodySmall,
@@ -834,7 +1326,7 @@ private fun HistorialFila(chequeo: ChequeoVehiculo) {
         if (chequeo.estaCerrado) {
             val condicionRetorno = chequeo.estadoEntrada?.etiqueta ?: "Apto"
             Text(
-                "Entrada: ${chequeo.kmEntrada} km · ${chequeo.horaEntrada ?: "—"} · " +
+                "Retorno: ${chequeo.kmEntrada} km · ${chequeo.horaEntrada ?: "—"} · " +
                     "${chequeo.kilometrosRecorridos} km recorridos · $condicionRetorno",
                 style = MaterialTheme.typography.bodySmall,
                 color = brandMutedColor(),
@@ -843,7 +1335,7 @@ private fun HistorialFila(chequeo: ChequeoVehiculo) {
         val totalFotos = chequeo.fotosSalida.size + chequeo.fotosEntrada.size
         if (totalFotos > 0) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Icon(CobreIcons.PhotoCamera, contentDescription = null, tint = brandMutedColor(), modifier = Modifier.size(13.dp))
+                Icon(CobreIcons.PhotoCamera, contentDescription = null, tint = Brand500, modifier = Modifier.size(14.dp))
                 Text(
                     "$totalFotos foto${if (totalFotos == 1) "" else "s"} de inspección " +
                         "(${chequeo.fotosSalida.size} salida / ${chequeo.fotosEntrada.size} retorno)",
@@ -867,9 +1359,10 @@ private fun HistorialFila(chequeo: ChequeoVehiculo) {
             )
         }
         Text(
-            "· Responsable: ${chequeo.responsable}",
+            "Responsable: ${chequeo.responsable}",
             style = MaterialTheme.typography.labelSmall,
-            color = brandMutedColor().copy(alpha = 0.7f),
+            color = brandHeadingColor().copy(alpha = 0.8f),
+            fontWeight = FontWeight.SemiBold,
         )
     }
 }
@@ -878,6 +1371,79 @@ private fun diagnosticarKilometrajeChequeo(kmTexto: String, kmMinimo: Int): Stri
     if (kmTexto.isBlank()) return null
     val km = kmTexto.toIntOrNull() ?: return "Ingresa un kilometraje válido."
     return if (km < kmMinimo) "No puede ser menor al kilometraje anterior registrado ($kmMinimo km)." else null
+}
+
+/** RF-VE02 / RF-VE03: modal de registro de salida o retorno con inspección técnica y evidencia fotográfica. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ModalChequeoVehiculo(
+    vehiculo: Vehiculo,
+    chequeo: ChequeoVehiculo?,
+    conductores: List<ConductorFlota>,
+    administradorNombre: String,
+    onDismiss: () -> Unit,
+    onConfirmar: (
+        repartidorId: String?,
+        responsable: String,
+        km: Int,
+        estado: EstadoCondicionVehiculo,
+        fotos: List<FotoChequeo>,
+        observaciones: String?,
+    ) -> Unit,
+) {
+    val esEntrada = chequeo != null && chequeo.estaEnRuta
+    val isDark = cobreIsDark()
+    val accent = if (esEntrada) {
+        if (isDark) StatusAmberDark else StatusAmber
+    } else {
+        if (isDark) StatusGreenDark else StatusGreen
+    }
+    val kmMinimo = if (esEntrada) chequeo.kmSalida ?: vehiculo.kilometrajeActual else vehiculo.kilometrajeActual
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = if (isDark) DarkSurface1 else Color(0xFFFBF8F5),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 12.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        if (esEntrada) "Registrar Retorno · ${vehiculo.patente}" else "Dar Salida · ${vehiculo.patente}",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = brandHeadingColor(),
+                        fontWeight = FontWeight.ExtraBold,
+                        modifier = Modifier.semantics { heading() },
+                    )
+                    Text(
+                        "${vehiculo.nombreCompleto} · Odómetro mínimo: $kmMinimo km",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = brandMutedColor(),
+                    )
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(CobreIcons.Close, contentDescription = "Cerrar", tint = brandMutedColor())
+                }
+            }
+            ChequeoForm(
+                accent = accent,
+                esEntrada = esEntrada,
+                kmMinimo = kmMinimo,
+                conductores = conductores,
+                responsablePorDefecto = chequeo?.responsable ?: administradorNombre,
+                onConfirmar = onConfirmar,
+            )
+            Spacer(Modifier.height(16.dp))
+        }
+    }
 }
 
 /** Formulario de salida o entrada con conductor, condición técnica, odómetro y evidencia fotográfica. */
@@ -897,7 +1463,7 @@ private fun ChequeoForm(
         observaciones: String?,
     ) -> Unit,
 ) {
-    var kmTexto by remember { mutableStateOf("") }
+    var kmTexto by remember { mutableStateOf(kmMinimo.toString()) }
     var observaciones by remember { mutableStateOf("") }
     var estadoSeleccionado by remember { mutableStateOf(EstadoCondicionVehiculo.APTO) }
     var conductorSeleccionado by remember(conductores) { mutableStateOf(conductores.firstOrNull()) }
@@ -909,10 +1475,7 @@ private fun ChequeoForm(
     val bloqueadoPorNoApto = !esEntrada && estadoSeleccionado == EstadoCondicionVehiculo.NO_APTO
     val habilitado = km != null && km >= kmMinimo && !bloqueadoPorNoApto
 
-    Column(modifier = Modifier.padding(top = 16.dp)) {
-        Box(Modifier.fillMaxWidth().height(1.dp).background(brandMutedColor().copy(alpha = 0.12f)))
-        Spacer(Modifier.height(14.dp))
-
+    Column(modifier = Modifier.padding(top = 12.dp)) {
         if (!esEntrada && conductores.isNotEmpty()) {
             SelectorConductorFlota(
                 conductores = conductores,
@@ -932,7 +1495,7 @@ private fun ChequeoForm(
         OutlinedTextField(
             value = kmTexto,
             onValueChange = { kmTexto = it.filter(Char::isDigit) },
-            label = { Text(if (esEntrada) "Kilometraje de entrada" else "Kilometraje de salida") },
+            label = { Text(if (esEntrada) "Kilometraje de retorno" else "Kilometraje de salida") },
             placeholder = { Text("Mínimo $kmMinimo") },
             singleLine = true,
             isError = errorKm != null,
@@ -1005,7 +1568,7 @@ private fun BotonConfirmarChequeo(
         Icon(CobreIcons.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(8.dp))
         Text(
-            if (esEntrada) "Confirmar entrada" else "Confirmar salida",
+            if (esEntrada) "Confirmar retorno" else "Confirmar salida",
             style = MaterialTheme.typography.labelLarge,
             color = Color.White,
             fontWeight = FontWeight.Bold,
@@ -1023,21 +1586,11 @@ private fun SelectorConductorFlota(
     Spacer(Modifier.height(6.dp))
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(conductores, key = { it.id }) { conductor ->
-            val activo = seleccionado?.id == conductor.id
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(if (activo) Brand500 else Brand500.copy(alpha = 0.10f))
-                    .clickable { onSeleccionar(conductor) }
-                    .padding(horizontal = 12.dp, vertical = 7.dp),
-            ) {
-                Text(
-                    conductor.nombreCompleto,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = if (activo) Color.White else Brand500,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
+            SelectableChip(
+                label = conductor.nombreCompleto,
+                seleccionado = seleccionado?.id == conductor.id,
+                onClick = { onSeleccionar(conductor) },
+            )
         }
     }
 }
@@ -1068,7 +1621,7 @@ private fun SelectorCondicionVehiculo(
                     .clip(RoundedCornerShape(12.dp))
                     .background(if (activo) colorOpcion else colorOpcion.copy(alpha = 0.12f))
                     .clickable { onSeleccionar(opcion) }
-                    .padding(horizontal = 12.dp, vertical = 7.dp),
+                    .padding(horizontal = 12.dp, vertical = 9.dp),
             ) {
                 Text(
                     opcion.etiqueta,

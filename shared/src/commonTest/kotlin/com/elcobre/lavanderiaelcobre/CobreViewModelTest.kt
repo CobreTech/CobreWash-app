@@ -111,7 +111,7 @@ class CobreViewModelTest {
     @Test
     fun avanzarEtapa_conAlertaActiva_noAvanza() {
         val vm = crearViewModel()
-        // P002 nace con una alerta INSUMO_CRITICO activa (ver MockData).
+        // P002 nace con una alerta INSUMO_CRITICO activa (ver pedidosFixturePrueba).
         val etapaOriginal = vm.pedido("P002")!!.etapaActual
 
         vm.avanzarEtapa("P002", "")

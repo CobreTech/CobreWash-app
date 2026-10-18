@@ -40,6 +40,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -61,7 +62,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import com.elcobre.lavanderiaelcobre.data.FirebaseVehiculosRepository
-import com.elcobre.lavanderiaelcobre.data.mock.MockData
+import com.elcobre.lavanderiaelcobre.data.model.Administrador
+import com.elcobre.lavanderiaelcobre.data.model.FiltroFlota
+import com.elcobre.lavanderiaelcobre.data.model.Operario
+import com.elcobre.lavanderiaelcobre.ui.components.AdminSidebar
 import com.elcobre.lavanderiaelcobre.ui.components.CobreBackHandler
 import com.elcobre.lavanderiaelcobre.ui.components.CobreBackdrop
 import com.elcobre.lavanderiaelcobre.ui.components.CobreIcons
@@ -231,9 +235,10 @@ private fun LoginDestino(vm: CobreViewModel) {
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun DashboardDestino(vm: CobreViewModel, sharedScope: SharedTransitionScope, animatedScope: AnimatedVisibilityScope) {
+    val operario = recordarOperarioActivo(vm.operario)
     OperarioScaffold(Pantalla.Dashboard, vm) { isTablet ->
         DashboardScreen(
-            operario = vm.operario ?: MockData.operario,
+            operario = operario,
             pedidos = vm.pedidos,
             onAbrirPedido = { vm.navegar(Pantalla.Detalle(it.id)) },
             onAvanzarEtapa = { vm.avanzarEtapa(it.id, "") },
@@ -250,15 +255,30 @@ private fun DashboardDestino(vm: CobreViewModel, sharedScope: SharedTransitionSc
 
 @Composable
 private fun ConfiguracionDestino(destino: Pantalla, vm: CobreViewModel) {
+    val operario = recordarOperarioActivo(vm.operario)
     OperarioScaffold(destino, vm) { isTablet ->
         ConfiguracionScreen(
-            operario = vm.operario ?: MockData.operario,
+            operario = operario,
             modoTema = vm.modoTema,
             onCambiarTema = { vm.cambiarModoTema(it) },
             onCerrarSesion = { vm.cerrarSesion() },
             applySystemBarsInsets = !isTablet,
         )
     }
+}
+
+@Composable
+private fun recordarOperarioActivo(actual: Operario?): Operario {
+    var ultimo by remember { mutableStateOf(actual) }
+    if (actual != null) ultimo = actual
+    return ultimo ?: Operario(nombre = "Operario", rol = "Operario de planta", turno = "")
+}
+
+@Composable
+private fun recordarAdministradorActivo(actual: Administrador?): Administrador {
+    var ultimo by remember { mutableStateOf(actual) }
+    if (actual != null) ultimo = actual
+    return ultimo ?: Administrador(nombre = "Administrador")
 }
 
 @Composable
@@ -313,8 +333,13 @@ private fun InsumosDestino(destino: Pantalla, vm: CobreViewModel) {
 @Composable
 private fun VehiculosDestino(vm: CobreViewModel) {
     val vehiculosVm: VehiculosViewModel = viewModel { VehiculosViewModel(repository = FirebaseVehiculosRepository()) }
-    val administrador = vm.administrador ?: MockData.administrador
+    val administrador = recordarAdministradorActivo(vm.administrador)
     val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val isDark = cobreIsDark()
+    val cerrarSesionAdmin = {
+        vehiculosVm.cambiarSesion(false)
+        vm.cerrarSesion()
+    }
 
     LaunchedEffect(vm.sesion, lifecycle) {
         vehiculosVm.cambiarSesion(vm.administrador != null)
@@ -328,43 +353,115 @@ private fun VehiculosDestino(vm: CobreViewModel) {
         }
     }
 
-    VehiculosScreen(
+    AdminScaffold(
         administrador = administrador,
-        vehiculos = vehiculosVm.vehiculosFiltrados,
-        chequeoEnRuta = { id -> vehiculosVm.chequeoEnRuta(id) },
-        historialVehiculo = { id -> vehiculosVm.historialVehiculo(id) },
-        onRegistrarSalida = { id, km, fotos, obs ->
-            vehiculosVm.registrarSalidaVehiculo(id, km, fotos, obs, administrador.nombre)
-        },
-        onRegistrarEntrada = { id, km, fotos, obs -> vehiculosVm.registrarEntradaVehiculo(id, km, fotos, obs) },
-        onAgregarVehiculo = { patente, modelo, km -> vehiculosVm.registrarVehiculo(patente, modelo, km) },
-        onCerrarSesion = {
-            vehiculosVm.cambiarSesion(false)
-            vm.cerrarSesion()
-        },
-        conductores = vehiculosVm.conductores,
-        kpis = vehiculosVm.kpis,
-        filtroActual = vehiculosVm.filtro,
-        busqueda = vehiculosVm.busqueda,
-        cargando = vehiculosVm.cargando,
-        operacionEnCurso = vehiculosVm.operacionEnCurso,
-        error = vehiculosVm.error,
-        mensajeExito = vehiculosVm.mensajeExito,
-        onCambiarBusqueda = { vehiculosVm.actualizarBusqueda(it) },
-        onSeleccionarFiltro = { vehiculosVm.seleccionarFiltro(it) },
-        onRefrescar = { vehiculosVm.refrescarFlota() },
-        onLimpiarMensajes = { vehiculosVm.limpiarMensajes() },
-        onCambiarEstadoVehiculo = { id, activo -> vehiculosVm.cambiarEstadoVehiculo(id, activo) },
-        onRegistrarVehiculoDetallado = { patente, marca, modelo, anio, km ->
-            vehiculosVm.registrarVehiculo(patente = patente, modelo = modelo, kilometrajeInicial = km, marca = marca, anio = anio)
-        },
-        onRegistrarSalidaDetallada = { id, repartidorId, responsable, km, estado, fotos, obs ->
-            vehiculosVm.registrarSalidaVehiculo(id, km, fotos, obs, responsable, repartidorId, estado)
-        },
-        onRegistrarEntradaDetallada = { id, km, estado, fotos, obs ->
-            vehiculosVm.registrarEntradaVehiculo(id, km, fotos, obs, estado)
-        },
-    )
+        vm = vm,
+        vehiculosVm = vehiculosVm,
+        onCerrarSesion = cerrarSesionAdmin,
+    ) { isTablet ->
+        VehiculosScreen(
+            administrador = administrador,
+            vehiculos = vehiculosVm.vehiculosFiltrados,
+            chequeoEnRuta = { id -> vehiculosVm.chequeoEnRuta(id) },
+            historialVehiculo = { id -> vehiculosVm.historialVehiculo(id) },
+            onRegistrarSalida = { id, km, fotos, obs ->
+                vehiculosVm.registrarSalidaVehiculo(id, km, fotos, obs, administrador.nombre)
+            },
+            onRegistrarEntrada = { id, km, fotos, obs -> vehiculosVm.registrarEntradaVehiculo(id, km, fotos, obs) },
+            onAgregarVehiculo = { patente, modelo, km -> vehiculosVm.registrarVehiculo(patente, modelo, km) },
+            onCerrarSesion = cerrarSesionAdmin,
+            conductores = vehiculosVm.conductores,
+            kpis = vehiculosVm.kpis,
+            filtroActual = vehiculosVm.filtro,
+            busqueda = vehiculosVm.busqueda,
+            cargando = vehiculosVm.cargando,
+            operacionEnCurso = vehiculosVm.operacionEnCurso,
+            error = vehiculosVm.error,
+            mensajeExito = vehiculosVm.mensajeExito,
+            mostrarTopBar = !isTablet,
+            onToggleTema = { vm.alternarTema(isDark) },
+            onCambiarBusqueda = { vehiculosVm.actualizarBusqueda(it) },
+            onSeleccionarFiltro = { vehiculosVm.seleccionarFiltro(it) },
+            onRefrescar = { vehiculosVm.refrescarFlota() },
+            onLimpiarMensajes = { vehiculosVm.limpiarMensajes() },
+            onCambiarEstadoVehiculo = { id, activo -> vehiculosVm.cambiarEstadoVehiculo(id, activo) },
+            onRegistrarVehiculoDetallado = { patente, marca, modelo, anio, km ->
+                vehiculosVm.registrarVehiculo(
+                    patente = patente,
+                    modelo = modelo,
+                    kilometrajeInicial = km,
+                    marca = marca,
+                    anio = anio,
+                )
+            },
+            onRegistrarSalidaDetallada = { id, repartidorId, responsable, km, estado, fotos, obs ->
+                vehiculosVm.registrarSalidaVehiculo(id, km, fotos, obs, responsable, repartidorId, estado)
+            },
+            onRegistrarEntradaDetallada = { id, km, estado, fotos, obs ->
+                vehiculosVm.registrarEntradaVehiculo(id, km, fotos, obs, estado)
+            },
+        )
+    }
+}
+
+@Composable
+private fun AdminScaffold(
+    administrador: Administrador,
+    vm: CobreViewModel,
+    vehiculosVm: VehiculosViewModel,
+    onCerrarSesion: () -> Unit,
+    content: @Composable (isTablet: Boolean) -> Unit,
+) {
+    val isDark = cobreIsDark()
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val isTablet = maxWidth >= ANCHO_TABLET
+        if (isTablet) {
+            var sidebarVisible by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(true) }
+            val sidebarWidth by androidx.compose.animation.core.animateDpAsState(
+                targetValue = if (sidebarVisible) 240.dp else 0.dp,
+                animationSpec = tween(350, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+                label = "adminSidebarWidth",
+            )
+            Row(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
+                Box(
+                    modifier = Modifier
+                        .width(sidebarWidth)
+                        .fillMaxHeight()
+                        .clipToBounds(),
+                ) {
+                    AdminSidebar(
+                        filtroActual = vehiculosVm.filtro,
+                        kpis = vehiculosVm.kpis,
+                        adminNombre = administrador.nombre,
+                        adminRol = administrador.rol,
+                        onSeleccionarFiltro = { vehiculosVm.seleccionarFiltro(it) },
+                        onRefrescar = { vehiculosVm.refrescarFlota() },
+                        onCerrarSesion = onCerrarSesion,
+                        modifier = Modifier.requiredWidth(240.dp),
+                    )
+                }
+                Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                    WebTopbar(
+                        usuarioNombre = administrador.nombre,
+                        usuarioRol = "ADMINISTRADOR",
+                        modoTema = vm.modoTema,
+                        onToggleTema = { vm.alternarTema(isDark) },
+                        showSearch = false,
+                        alertasCount = vehiculosVm.kpis.enRuta,
+                        onAlertasClick = { vehiculosVm.seleccionarFiltro(FiltroFlota.EN_RUTA) },
+                        onMenuClick = { sidebarVisible = !sidebarVisible },
+                    )
+                    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                        content(true)
+                    }
+                }
+            }
+        } else {
+            Box(modifier = Modifier.fillMaxSize()) {
+                content(false)
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalSharedTransitionApi::class)

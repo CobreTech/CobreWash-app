@@ -162,16 +162,29 @@ class VehiculosViewModelTest {
         }
     }
 
+    private fun crearVmEnMemoriaConFlotaBase(): VehiculosViewModel = VehiculosViewModel().apply {
+        registrarVehiculo(patente = "HLRT-24", modelo = "Suzuki APV 2019", kilometrajeInicial = 58_320)
+        registrarVehiculo(patente = "FXYP-87", modelo = "Chevrolet N300 2021", kilometrajeInicial = 31_450)
+        registrarSalidaVehiculo(
+            vehiculoId = "V01",
+            km = 58_320,
+            fotos = listOf(FotoChequeo(id = "F01", uri = "vehiculos/v01/salida-frontal.jpg")),
+            observaciones = "Sin daños visibles.",
+            responsable = "Mauricio Aguilera",
+        )
+        limpiarMensajes()
+    }
+
     @Test
     fun chequeoEnRuta_devuelveElChequeoAbiertoDelVehiculo() {
-        val vm = VehiculosViewModel()
+        val vm = crearVmEnMemoriaConFlotaBase()
         assertNotNull(vm.chequeoEnRuta("V01"))
         assertNull(vm.chequeoEnRuta("V02"))
     }
 
     @Test
     fun registrarSalidaVehiculo_abreUnChequeoNuevo() {
-        val vm = VehiculosViewModel()
+        val vm = crearVmEnMemoriaConFlotaBase()
         val previos = vm.chequeosVehiculo.size
 
         vm.registrarSalidaVehiculo("V02", km = 31_500, fotos = emptyList(), observaciones = null, responsable = "Ana")
@@ -185,7 +198,7 @@ class VehiculosViewModelTest {
 
     @Test
     fun registrarEntradaVehiculo_cierraElChequeoYActualizaKilometraje() {
-        val vm = VehiculosViewModel()
+        val vm = crearVmEnMemoriaConFlotaBase()
 
         vm.registrarEntradaVehiculo("V01", km = 58_400, fotos = emptyList(), observaciones = "Sin novedad")
 
@@ -196,7 +209,7 @@ class VehiculosViewModelTest {
 
     @Test
     fun registrarEntradaVehiculo_sinChequeoAbierto_noHaceNada() {
-        val vm = VehiculosViewModel()
+        val vm = crearVmEnMemoriaConFlotaBase()
         val kmOriginal = vm.vehiculos.first { it.id == "V02" }.kilometrajeActual
 
         vm.registrarEntradaVehiculo("V02", km = 40_000, fotos = emptyList(), observaciones = null)
@@ -206,7 +219,7 @@ class VehiculosViewModelTest {
 
     @Test
     fun registrarSalidaVehiculo_generaIdsMonotonicosSinColisionar() {
-        val vm = VehiculosViewModel()
+        val vm = crearVmEnMemoriaConFlotaBase()
         vm.registrarEntradaVehiculo("V01", km = 58_400, fotos = emptyList(), observaciones = null)
 
         vm.registrarSalidaVehiculo("V01", km = 58_400, fotos = emptyList(), observaciones = null, responsable = "Ana")
@@ -218,7 +231,7 @@ class VehiculosViewModelTest {
 
     @Test
     fun registrarVehiculo_agregaUnoNuevoALaFlota() {
-        val vm = VehiculosViewModel()
+        val vm = crearVmEnMemoriaConFlotaBase()
         val previos = vm.vehiculos.size
 
         vm.registrarVehiculo(patente = "xyzw12", modelo = "Kia Bongo 2020", kilometrajeInicial = 1_000)
@@ -232,7 +245,7 @@ class VehiculosViewModelTest {
 
     @Test
     fun historialVehiculo_devuelveSoloLosChequeosDeEseVehiculo() {
-        val vm = VehiculosViewModel()
+        val vm = crearVmEnMemoriaConFlotaBase()
         vm.registrarEntradaVehiculo("V01", km = 58_400, fotos = emptyList(), observaciones = null)
         vm.registrarSalidaVehiculo("V02", km = 31_450, fotos = emptyList(), observaciones = null, responsable = "Ana")
 

@@ -2,12 +2,88 @@ package com.elcobre.lavanderiaelcobre
 
 import com.elcobre.lavanderiaelcobre.data.ComandasRepository
 import com.elcobre.lavanderiaelcobre.data.OperacionComandaException
-import com.elcobre.lavanderiaelcobre.data.mock.MockData
+import com.elcobre.lavanderiaelcobre.data.model.EtapaProceso
+import com.elcobre.lavanderiaelcobre.data.model.EventoHistorial
 import com.elcobre.lavanderiaelcobre.data.model.Pedido
+import com.elcobre.lavanderiaelcobre.data.model.Prioridad
 import com.elcobre.lavanderiaelcobre.data.model.TipoAlerta
+import com.elcobre.lavanderiaelcobre.data.model.TipoComanda
+import com.elcobre.lavanderiaelcobre.data.model.TipoEvento
+
+internal fun pedidosFixturePrueba(): List<Pedido> = listOf(
+    Pedido(
+        id = "P001",
+        comanda = "CMD-1042",
+        cliente = "Hotel Boutique Los Andes",
+        tipo = TipoComanda.DOMICILIO,
+        tipoServicio = "Ropa de cama · Lavado y planchado",
+        prioridad = Prioridad.ALTA,
+        piezas = 48,
+        plazoEntrega = "Hoy 18:00",
+        etapaActual = EtapaProceso.LAVADO,
+        historial = listOf(
+            EventoHistorial(
+                TipoEvento.CAMBIO_ETAPA,
+                "Recepción en planta → Lavado",
+                "Carga pesada e ingresada a lavadora industrial 3.",
+                "09:15",
+                "Operario",
+            ),
+        ),
+    ),
+    Pedido(
+        id = "P002",
+        comanda = "CMD-1043",
+        cliente = "Restaurante El Fogón",
+        tipo = TipoComanda.EN_TIENDA,
+        tipoServicio = "Manteles y servilletas · Lavado en seco",
+        prioridad = Prioridad.MEDIA,
+        piezas = 32,
+        plazoEntrega = "Mañana 12:00",
+        etapaActual = EtapaProceso.RECEPCION,
+    ).registrarAlerta(
+        TipoAlerta.INSUMO_CRITICO,
+        "Falta detergente industrial biodegradable.",
+        "14:30",
+        "Sistema",
+    ),
+    Pedido(
+        id = "P003",
+        comanda = "CMD-1039",
+        cliente = "Clínica Santa Marta",
+        tipo = TipoComanda.EN_TIENDA,
+        tipoServicio = "Uniformes clínicos · Lavado sanitizado",
+        prioridad = Prioridad.ALTA,
+        piezas = 76,
+        plazoEntrega = "Hoy 16:00",
+        etapaActual = EtapaProceso.LAVADO,
+    ),
+    Pedido(
+        id = "P004",
+        comanda = "CMD-1051",
+        cliente = "Gimnasio Pulso Fit",
+        tipo = TipoComanda.DOMICILIO,
+        tipoServicio = "Toallas deportivas · Lavado estándar",
+        prioridad = Prioridad.BAJA,
+        piezas = 120,
+        plazoEntrega = "Mañana 10:00",
+        etapaActual = EtapaProceso.PLANCHADO,
+    ),
+    Pedido(
+        id = "P005",
+        comanda = "CMD-1028",
+        cliente = "Spa Aguas Claras",
+        tipo = TipoComanda.EN_TIENDA,
+        tipoServicio = "Batas y toallas · Lavado premium",
+        prioridad = Prioridad.MEDIA,
+        piezas = 54,
+        plazoEntrega = "Hoy 14:30",
+        etapaActual = EtapaProceso.ENTREGA,
+    ),
+)
 
 class FakeComandasRepository : ComandasRepository {
-    val pedidos = MockData.pedidosIniciales().toMutableList()
+    val pedidos = pedidosFixturePrueba().toMutableList()
     var desconectado = false
     var falla = false
     var escaneos = 0

@@ -13,8 +13,6 @@ import com.elcobre.lavanderiaelcobre.data.OperacionComandaException
 import com.elcobre.lavanderiaelcobre.data.RetornoFlotaInput
 import com.elcobre.lavanderiaelcobre.data.SalidaFlotaInput
 import com.elcobre.lavanderiaelcobre.data.VehiculosRepository
-import com.elcobre.lavanderiaelcobre.data.mock.MockData
-import com.elcobre.lavanderiaelcobre.data.mock.RelojMock
 import com.elcobre.lavanderiaelcobre.data.model.ChequeoVehiculo
 import com.elcobre.lavanderiaelcobre.data.model.ConductorFlota
 import com.elcobre.lavanderiaelcobre.data.model.EstadoCondicionVehiculo
@@ -26,6 +24,7 @@ import com.elcobre.lavanderiaelcobre.data.model.calcularKpisFlota
 import com.elcobre.lavanderiaelcobre.data.model.esPatenteChilenaValida
 import com.elcobre.lavanderiaelcobre.data.model.extraerMarcaYModelo
 import com.elcobre.lavanderiaelcobre.data.model.normalizarPatenteChilena
+import com.elcobre.lavanderiaelcobre.data.model.obtenerHoraFormateadaActual
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -43,17 +42,13 @@ class VehiculosViewModel(
 
     private val scope: CoroutineScope get() = scopeOverride ?: viewModelScope
 
-    private val _vehiculos: SnapshotStateList<Vehiculo> = mutableStateListOf<Vehiculo>().apply {
-        if (repository == null) addAll(MockData.vehiculosIniciales())
-    }
+    private val _vehiculos: SnapshotStateList<Vehiculo> = mutableStateListOf()
     val vehiculos: List<Vehiculo> get() = _vehiculos
 
     private val _conductores: SnapshotStateList<ConductorFlota> = mutableStateListOf()
     val conductores: List<ConductorFlota> get() = _conductores
 
-    private val _chequeosVehiculo: SnapshotStateList<ChequeoVehiculo> = mutableStateListOf<ChequeoVehiculo>().apply {
-        if (repository == null) addAll(MockData.chequeosVehiculoIniciales())
-    }
+    private val _chequeosVehiculo: SnapshotStateList<ChequeoVehiculo> = mutableStateListOf()
 
     /** Chequeos de vehículo (check-in/checkout), más reciente primero. */
     val chequeosVehiculo: List<ChequeoVehiculo> get() = _chequeosVehiculo
@@ -297,7 +292,7 @@ class VehiculosViewModel(
                     fecha = "Hoy",
                     responsable = responsable,
                     repartidorId = repartidorId,
-                ).registrarSalida(km, fotos, observaciones, RelojMock.ahora(), estadoVehiculo),
+                ).registrarSalida(km, fotos, observaciones, obtenerHoraFormateadaActual(), estadoVehiculo),
             )
             _vehiculos.reemplazarPrimero({ it.id == vehiculoId }) {
                 it.copy(kilometrajeActual = maxOf(it.kilometrajeActual, km))
@@ -342,7 +337,7 @@ class VehiculosViewModel(
         }
         val repo = repository
         if (repo == null) {
-            val hora = RelojMock.ahora()
+            val hora = obtenerHoraFormateadaActual()
             error = null
             _chequeosVehiculo.reemplazarPrimero({ it.vehiculoId == vehiculoId && it.estaEnRuta }) {
                 it.registrarEntrada(km, fotos, observaciones, hora, estadoVehiculo)

@@ -187,7 +187,7 @@ data class Operario(
     val turno: String,
 )
 
-/** Administrador/dueño autenticado (sesión mock); ve la flota de reparto (RF-VE), no el flujo de planta. */
+/** Administrador autenticado; gestiona la flota de reparto (RF-VE01 a RF-VE04). */
 data class Administrador(
     val nombre: String,
     val rol: String = "Administrador",

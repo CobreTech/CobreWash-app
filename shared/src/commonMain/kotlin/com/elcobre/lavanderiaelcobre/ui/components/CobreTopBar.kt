@@ -48,6 +48,7 @@ fun CobreTopBar(
     nombre: String,
     subtitulo: String,
     onCerrarSesion: () -> Unit,
+    onToggleTema: (() -> Unit)? = null,
     avatar: @Composable () -> Unit,
 ) {
     val isDark = cobreIsDark()
@@ -112,9 +113,35 @@ fun CobreTopBar(
             )
         }
 
+        if (onToggleTema != null) {
+            TemaTopBarButton(isDark = isDark, onToggleTema = onToggleTema)
+            Spacer(Modifier.width(6.dp))
+        }
         Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) { avatar() }
         Spacer(Modifier.width(6.dp))
         CerrarSesionButton(onCerrarSesion)
+    }
+}
+
+@Composable
+private fun TemaTopBarButton(isDark: Boolean, onToggleTema: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val accent = if (isDark) Brand400 else Brand500
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .pressableScale(interaction)
+            .clip(RoundedCornerShape(12.dp))
+            .background(accent.copy(alpha = 0.12f))
+            .clickable(interactionSource = interaction, indication = null, onClick = onToggleTema),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = if (isDark) CobreIcons.Sun else CobreIcons.Moon,
+            contentDescription = if (isDark) "Cambiar a modo claro" else "Cambiar a modo oscuro",
+            tint = accent,
+            modifier = Modifier.size(19.dp),
+        )
     }
 }
 

@@ -78,7 +78,7 @@ class FlujoFirebaseTest {
     }
 
     @Test fun entregaPendiente_permiteCerrarLaComanda() {
-        val pedido = com.elcobre.lavanderiaelcobre.data.mock.MockData.pedidosIniciales().first().copy(
+        val pedido = pedidosFixturePrueba().first().copy(
             etapaActual = com.elcobre.lavanderiaelcobre.data.model.EtapaProceso.ENTREGA,
             estadoComandaDb = "FINALIZADA", etapaIdDb = "etapa-entrega", ordenEtapaDb = 5,
         )

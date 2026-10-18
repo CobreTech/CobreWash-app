@@ -42,6 +42,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.elcobre.lavanderiaelcobre.data.model.FiltroFlota
+import com.elcobre.lavanderiaelcobre.data.model.KpisFlota
 import com.elcobre.lavanderiaelcobre.ui.Pantalla
 import com.elcobre.lavanderiaelcobre.ui.theme.Brand400
 import com.elcobre.lavanderiaelcobre.ui.theme.Brand500
@@ -61,7 +63,7 @@ import org.jetbrains.compose.resources.painterResource
 private data class SidebarNavItem(
     val icon: ImageVector,
     val label: String,
-    val pantalla: Pantalla,
+    val pantalla: Pantalla = Pantalla.Dashboard,
     val badge: Int? = null,
 )
 
@@ -102,16 +104,10 @@ fun WebSidebar(
             }
             .padding(horizontal = 14.dp, vertical = 18.dp),
     ) {
-        // Logo de la marca
         SidebarBrandHeader()
-
         Spacer(Modifier.height(20.dp))
-
-        // Botón CTA para escanear QR en planta
         SidebarQrCta(onClick = onEscanearQR)
-
         Spacer(Modifier.height(18.dp))
-
         Text(
             "MENÚ PRINCIPAL",
             style = MaterialTheme.typography.labelSmall.copy(
@@ -121,8 +117,6 @@ fun WebSidebar(
             color = if (isDark) DarkOnSurfaceMuted else Color.Gray,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
         )
-
-        // Navegación principal
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -135,8 +129,6 @@ fun WebSidebar(
                 )
             }
         }
-
-        // Mini-tarjeta de notificaciones/alertas (espeja Sidebar.tsx de la web)
         if (comandasActivas > 0 || alertasStockCount > 0) {
             SidebarAlertPreview(
                 totalAlertas = comandasActivas + alertasStockCount,
@@ -144,11 +136,92 @@ fun WebSidebar(
             )
             Spacer(Modifier.height(12.dp))
         }
-
-        // Perfil y cierre de sesión
         SidebarUserProfile(
             nombre = operarioNombre,
             rol = operarioRol,
+            onCerrarSesion = onCerrarSesion,
+        )
+    }
+}
+
+/**
+ * Sidebar lateral adaptativo para el rol Administrador en tablets (`>= 600dp`),
+ * manteniendo la misma estructura visual que [WebSidebar].
+ */
+@Composable
+fun AdminSidebar(
+    filtroActual: FiltroFlota,
+    kpis: KpisFlota,
+    adminNombre: String,
+    adminRol: String,
+    onSeleccionarFiltro: (FiltroFlota) -> Unit,
+    onRefrescar: () -> Unit,
+    onCerrarSesion: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val isDark = cobreIsDark()
+    val bgColor = if (isDark) DarkSurface1.copy(alpha = 0.95f) else Color.White.copy(alpha = 0.92f)
+    val dividerColor = if (isDark) Color.White.copy(alpha = 0.06f) else Stone200.copy(alpha = 0.8f)
+
+    val filtros = listOf(
+        FiltroFlota.TODOS to SidebarNavItem(CobreIcons.LocalShipping, "Toda la Flota", badge = kpis.total.takeIf { it > 0 }),
+        FiltroFlota.DISPONIBLES to SidebarNavItem(CobreIcons.CheckCircle, "Disponibles", badge = kpis.disponibles.takeIf { it > 0 }),
+        FiltroFlota.EN_RUTA to SidebarNavItem(CobreIcons.Speed, "En Ruta", badge = kpis.enRuta.takeIf { it > 0 }),
+        FiltroFlota.INACTIVOS to SidebarNavItem(CobreIcons.Warning, "En Mantención", badge = kpis.inactivos.takeIf { it > 0 }),
+    )
+
+    Column(
+        modifier = modifier
+            .width(240.dp)
+            .fillMaxHeight()
+            .background(bgColor)
+            .drawBehind {
+                drawLine(dividerColor, start = Offset(size.width, 0f), end = Offset(size.width, size.height))
+            }
+            .padding(horizontal = 14.dp, vertical = 18.dp),
+    ) {
+        SidebarBrandHeader()
+        Spacer(Modifier.height(20.dp))
+        SidebarQrCta(
+            label = "Sincronizar Flota",
+            icon = CobreIcons.History,
+            onClick = onRefrescar,
+        )
+        Spacer(Modifier.height(18.dp))
+        Text(
+            "GESTIÓN DE FLOTA",
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.2.sp,
+            ),
+            color = if (isDark) DarkOnSurfaceMuted else Color.Gray,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+        )
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            filtros.forEach { (filtro, item) ->
+                SidebarNavButton(
+                    item = item,
+                    seleccionado = filtroActual == filtro,
+                    onClick = { onSeleccionarFiltro(filtro) },
+                )
+            }
+        }
+        if (kpis.total > 0) {
+            SidebarAlertPreview(
+                totalAlertas = kpis.disponibles,
+                titulo = "Flota Operativa",
+                subtitulo = "${kpis.enRuta} en ruta · ${kpis.disponibles} disponibles",
+                icono = CobreIcons.LocalShipping,
+                onClick = { onSeleccionarFiltro(FiltroFlota.TODOS) },
+            )
+            Spacer(Modifier.height(12.dp))
+        }
+        SidebarUserProfile(
+            nombre = adminNombre,
+            rol = adminRol,
             onCerrarSesion = onCerrarSesion,
         )
     }
@@ -185,7 +258,11 @@ private fun SidebarBrandHeader() {
 }
 
 @Composable
-private fun SidebarQrCta(onClick: () -> Unit) {
+private fun SidebarQrCta(
+    onClick: () -> Unit,
+    label: String = "Escanear Comanda",
+    icon: ImageVector = CobreIcons.QrCodeScanner,
+) {
     val interaction = remember { MutableInteractionSource() }
     Row(
         modifier = Modifier
@@ -198,10 +275,10 @@ private fun SidebarQrCta(onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
-        Icon(CobreIcons.QrCodeScanner, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(8.dp))
         Text(
-            "Escanear Comanda",
+            label,
             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
             color = Color.White,
         )
@@ -239,7 +316,6 @@ private fun SidebarNavButton(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Indicador vertical anaranjado en el extremo izquierdo (idéntico al sidebar web)
             if (seleccionado) {
                 Box(
                     modifier = Modifier
@@ -290,7 +366,13 @@ private fun SidebarNavButton(
 }
 
 @Composable
-private fun SidebarAlertPreview(totalAlertas: Int, onClick: () -> Unit) {
+private fun SidebarAlertPreview(
+    totalAlertas: Int,
+    onClick: () -> Unit,
+    titulo: String = "Operaciones",
+    subtitulo: String = "Comandas activas en proceso",
+    icono: ImageVector = CobreIcons.Notifications,
+) {
     val isDark = cobreIsDark()
     val interaction = remember { MutableInteractionSource() }
     val cardBg = if (isDark) DarkSurface2 else Color(0xFFFBF8F5)
@@ -320,11 +402,11 @@ private fun SidebarAlertPreview(totalAlertas: Int, onClick: () -> Unit) {
                         .background(Brand500.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(CobreIcons.Notifications, contentDescription = null, tint = Brand500, modifier = Modifier.size(14.dp))
+                    Icon(icono, contentDescription = null, tint = Brand500, modifier = Modifier.size(14.dp))
                 }
                 Spacer(Modifier.width(7.dp))
                 Text(
-                    "Operaciones",
+                    titulo,
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                     color = brandHeadingColor(),
                 )
@@ -344,7 +426,7 @@ private fun SidebarAlertPreview(totalAlertas: Int, onClick: () -> Unit) {
         }
         Spacer(Modifier.height(5.dp))
         Text(
-            "Comandas activas en proceso",
+            subtitulo,
             style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
             color = brandMutedColor(),
             maxLines = 1,
