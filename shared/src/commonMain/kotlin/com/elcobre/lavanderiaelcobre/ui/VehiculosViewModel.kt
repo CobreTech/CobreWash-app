@@ -22,6 +22,7 @@ import com.elcobre.lavanderiaelcobre.data.model.KpisFlota
 import com.elcobre.lavanderiaelcobre.data.model.Vehiculo
 import com.elcobre.lavanderiaelcobre.data.model.calcularKpisFlota
 import com.elcobre.lavanderiaelcobre.data.model.esPatenteChilenaValida
+import com.elcobre.lavanderiaelcobre.data.model.esRolConductorORepartidor
 import com.elcobre.lavanderiaelcobre.data.model.extraerMarcaYModelo
 import com.elcobre.lavanderiaelcobre.data.model.normalizarPatenteChilena
 import com.elcobre.lavanderiaelcobre.data.model.obtenerHoraFormateadaActual
@@ -152,7 +153,11 @@ class VehiculosViewModel(
         _vehiculos.clear()
         _vehiculos.addAll(nuevosVehiculos.distinctBy { it.id })
         _conductores.clear()
-        _conductores.addAll(nuevosConductores.distinctBy { it.id })
+        _conductores.addAll(
+            nuevosConductores
+                .filter { esRolConductorORepartidor(it.rol) }
+                .distinctBy { it.id },
+        )
         _chequeosVehiculo.clear()
         _chequeosVehiculo.addAll(nuevosChequeos.distinctBy { it.id })
     }

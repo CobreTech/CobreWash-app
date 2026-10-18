@@ -5,6 +5,7 @@ import com.elcobre.lavanderiaelcobre.data.model.ConductorFlota
 import com.elcobre.lavanderiaelcobre.data.model.EstadoCondicionVehiculo
 import com.elcobre.lavanderiaelcobre.data.model.FotoChequeo
 import com.elcobre.lavanderiaelcobre.data.model.Vehiculo
+import com.elcobre.lavanderiaelcobre.data.model.esRolConductorORepartidor
 import com.elcobre.lavanderiaelcobre.data.model.extraerMarcaYModelo
 import com.elcobre.lavanderiaelcobre.data.model.normalizarPatenteChilena
 import com.elcobre.lavanderiaelcobre.dataconnect.EstadoVehiculo
@@ -107,18 +108,20 @@ internal actual suspend fun consultarFlotaFirebase(): EstadoFlotaRemota = solici
         )
     }
 
-    val conductores = data.conductores.map { item ->
-        val nombreCompleto = listOfNotNull(item.nombre, item.apellido)
-            .joinToString(" ")
-            .trim()
-            .ifEmpty { item.email }
-        ConductorFlota(
-            id = item.id,
-            nombreCompleto = nombreCompleto,
-            rut = item.rut,
-            rol = item.rol.nombre,
-        )
-    }
+    val conductores = data.conductores
+        .filter { esRolConductorORepartidor(it.rol.nombre) }
+        .map { item ->
+            val nombreCompleto = listOfNotNull(item.nombre, item.apellido)
+                .joinToString(" ")
+                .trim()
+                .ifEmpty { item.email }
+            ConductorFlota(
+                id = item.id,
+                nombreCompleto = nombreCompleto,
+                rut = item.rut,
+                rol = item.rol.nombre,
+            )
+        }
 
     EstadoFlotaRemota(
         vehiculos = vehiculos,

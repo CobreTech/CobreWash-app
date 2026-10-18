@@ -77,18 +77,21 @@ import com.elcobre.lavanderiaelcobre.data.model.KpisFlota
 import com.elcobre.lavanderiaelcobre.data.model.Vehiculo
 import com.elcobre.lavanderiaelcobre.data.model.calcularKpisFlota
 import com.elcobre.lavanderiaelcobre.data.model.esPatenteChilenaValida
+import com.elcobre.lavanderiaelcobre.data.model.esRolConductorORepartidor
 import com.elcobre.lavanderiaelcobre.data.model.normalizarPatenteChilena
 import com.elcobre.lavanderiaelcobre.ui.components.BrandCtaGradient
 import com.elcobre.lavanderiaelcobre.ui.components.CobreBackground
 import com.elcobre.lavanderiaelcobre.ui.components.CobreIcons
 import com.elcobre.lavanderiaelcobre.ui.components.CobreTopBar
 import com.elcobre.lavanderiaelcobre.ui.components.GlassCard
+import com.elcobre.lavanderiaelcobre.ui.components.MiniaturaFotoChequeo
 import com.elcobre.lavanderiaelcobre.ui.components.SelectableChip
 import com.elcobre.lavanderiaelcobre.ui.components.StatusChip
 import com.elcobre.lavanderiaelcobre.ui.components.brandHeadingColor
 import com.elcobre.lavanderiaelcobre.ui.components.brandMutedColor
 import com.elcobre.lavanderiaelcobre.ui.components.cobreFieldColors
 import com.elcobre.lavanderiaelcobre.ui.components.pressableScale
+import com.elcobre.lavanderiaelcobre.ui.components.rememberCapturadorFoto
 import com.elcobre.lavanderiaelcobre.ui.theme.Brand400
 import com.elcobre.lavanderiaelcobre.ui.theme.Brand500
 import com.elcobre.lavanderiaelcobre.ui.theme.Brand700
@@ -1463,10 +1466,15 @@ private fun ChequeoForm(
         observaciones: String?,
     ) -> Unit,
 ) {
+    val conductoresHabilitados = remember(conductores) {
+        conductores.filter { esRolConductorORepartidor(it.rol) }
+    }
     var kmTexto by remember { mutableStateOf(kmMinimo.toString()) }
     var observaciones by remember { mutableStateOf("") }
     var estadoSeleccionado by remember { mutableStateOf(EstadoCondicionVehiculo.APTO) }
-    var conductorSeleccionado by remember(conductores) { mutableStateOf(conductores.firstOrNull()) }
+    var conductorSeleccionado by remember(conductoresHabilitados) {
+        mutableStateOf(conductoresHabilitados.firstOrNull())
+    }
     val fotos = remember { mutableStateOf(listOf<FotoChequeo>()) }
     val haptic = LocalHapticFeedback.current
 
@@ -1476,9 +1484,9 @@ private fun ChequeoForm(
     val habilitado = km != null && km >= kmMinimo && !bloqueadoPorNoApto
 
     Column(modifier = Modifier.padding(top = 12.dp)) {
-        if (!esEntrada && conductores.isNotEmpty()) {
+        if (!esEntrada) {
             SelectorConductorFlota(
-                conductores = conductores,
+                conductores = conductoresHabilitados,
                 seleccionado = conductorSeleccionado,
                 onSeleccionar = { conductorSeleccionado = it },
             )
@@ -1582,15 +1590,23 @@ private fun SelectorConductorFlota(
     seleccionado: ConductorFlota?,
     onSeleccionar: (ConductorFlota) -> Unit,
 ) {
-    Text("Conductor responsable", style = MaterialTheme.typography.titleSmall, color = brandHeadingColor())
+    Text("Conductor o repartidor responsable", style = MaterialTheme.typography.titleSmall, color = brandHeadingColor())
     Spacer(Modifier.height(6.dp))
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(conductores, key = { it.id }) { conductor ->
-            SelectableChip(
-                label = conductor.nombreCompleto,
-                seleccionado = seleccionado?.id == conductor.id,
-                onClick = { onSeleccionar(conductor) },
-            )
+    if (conductores.isEmpty()) {
+        Text(
+            "No hay usuarios con rol conductor o repartidor disponibles.",
+            style = MaterialTheme.typography.bodySmall,
+            color = brandMutedColor(),
+        )
+    } else {
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(conductores, key = { it.id }) { conductor ->
+                SelectableChip(
+                    label = "${conductor.nombreCompleto} · ${conductor.rol.uppercase()}",
+                    seleccionado = seleccionado?.id == conductor.id,
+                    onClick = { onSeleccionar(conductor) },
+                )
+            }
         }
     }
 }
@@ -1645,12 +1661,38 @@ private fun SelectorCondicionVehiculo(
 
 @Composable
 private fun SelectorFotos(accent: Color, fotos: MutableState<List<FotoChequeo>>, haptic: HapticFeedback) {
-    Text(
-        "Evidencia fotográfica (${fotos.value.size})",
-        style = MaterialTheme.typography.titleSmall,
-        color = brandHeadingColor(),
-    )
-    Spacer(Modifier.height(8.dp))
+    val abrirCamara = rememberCapturadorFoto { uriCapturada ->
+        val orden = fotos.value.size + 1
+        val etiqueta = ETIQUETAS_FOTOS.getOrElse(orden - 1) { "Evidencia $orden" }
+        fotos.value = fotos.value + FotoChequeo(
+            id = "F-$orden-${uriCapturada.hashCode()}",
+            uri = uriCapturada,
+            descripcion = etiqueta,
+            orden = orden,
+        )
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            "Evidencia fotográfica (${fotos.value.size})",
+            style = MaterialTheme.typography.titleSmall,
+            color = brandHeadingColor(),
+        )
+        TextButton(
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                abrirCamara()
+            },
+        ) {
+            Icon(CobreIcons.PhotoCamera, contentDescription = null, tint = Brand500, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(6.dp))
+            Text("Tomar foto", color = Brand500, fontWeight = FontWeight.Bold)
+        }
+    }
+    Spacer(Modifier.height(6.dp))
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(fotos.value, key = { it.id }) { foto ->
             Column(
@@ -1658,10 +1700,17 @@ private fun SelectorFotos(accent: Color, fotos: MutableState<List<FotoChequeo>>,
                     .clip(RoundedCornerShape(12.dp))
                     .background(accent.copy(alpha = 0.14f))
                     .clickable { fotos.value = fotos.value.filterNot { it.id == foto.id } }
-                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Icon(CobreIcons.PhotoCamera, contentDescription = foto.descripcion, tint = accent, modifier = Modifier.size(22.dp))
+                MiniaturaFotoChequeo(
+                    uri = foto.uri,
+                    descripcion = foto.descripcion,
+                    tint = accent,
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                )
                 Spacer(Modifier.height(4.dp))
                 Text(
                     foto.descripcion ?: "Foto ${foto.orden}",
@@ -1674,24 +1723,21 @@ private fun SelectorFotos(accent: Color, fotos: MutableState<List<FotoChequeo>>,
             val interaction = remember { MutableInteractionSource() }
             Box(
                 modifier = Modifier
-                    .size(64.dp)
+                    .size(72.dp)
                     .pressableScale(interaction)
                     .clip(RoundedCornerShape(12.dp))
                     .background(Brand500.copy(alpha = 0.10f))
                     .clickable(interactionSource = interaction, indication = null) {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        val orden = fotos.value.size + 1
-                        val etiqueta = ETIQUETAS_FOTOS.getOrElse(orden - 1) { "Evidencia $orden" }
-                        fotos.value = fotos.value + FotoChequeo(
-                            id = "F$orden",
-                            uri = "vehiculos/evidencia/inspeccion-foto-$orden.jpg",
-                            descripcion = etiqueta,
-                            orden = orden,
-                        )
+                        abrirCamara()
                     },
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(CobreIcons.Add, contentDescription = "Tomar foto", tint = Brand500, modifier = Modifier.size(24.dp))
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(CobreIcons.PhotoCamera, contentDescription = "Tomar foto", tint = Brand500, modifier = Modifier.size(22.dp))
+                    Spacer(Modifier.height(2.dp))
+                    Text("Cámara", style = MaterialTheme.typography.labelSmall, color = Brand500, fontWeight = FontWeight.SemiBold)
+                }
             }
         }
     }

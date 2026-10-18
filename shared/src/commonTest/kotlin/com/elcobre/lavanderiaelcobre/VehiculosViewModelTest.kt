@@ -14,6 +14,7 @@ import com.elcobre.lavanderiaelcobre.data.model.FiltroFlota
 import com.elcobre.lavanderiaelcobre.data.model.FotoChequeo
 import com.elcobre.lavanderiaelcobre.data.model.Vehiculo
 import com.elcobre.lavanderiaelcobre.data.model.esPatenteChilenaValida
+import com.elcobre.lavanderiaelcobre.data.model.esRolConductorORepartidor
 import com.elcobre.lavanderiaelcobre.data.model.normalizarPatenteChilena
 import com.elcobre.lavanderiaelcobre.ui.VehiculosViewModel
 import kotlinx.coroutines.CompletableDeferred
@@ -56,8 +57,9 @@ class VehiculosViewModelTest {
             ),
         )
         val conductores = mutableListOf(
-            ConductorFlota(id = "cond-1", nombreCompleto = "Mauricio Aguilera", rut = "15.234.567-8", rol = "operario"),
-            ConductorFlota(id = "cond-2", nombreCompleto = "Camila Riquelme", rut = "17.890.123-4", rol = "admin"),
+            ConductorFlota(id = "cond-1", nombreCompleto = "Mauricio Aguilera", rut = "15.234.567-8", rol = "repartidor"),
+            ConductorFlota(id = "cond-2", nombreCompleto = "Camila Riquelme", rut = "17.890.123-4", rol = "conductor"),
+            ConductorFlota(id = "cond-3", nombreCompleto = "Pedro Operario", rut = "18.111.222-3", rol = "operario"),
         )
         val chequeos = mutableListOf(
             ChequeoVehiculo(
@@ -275,6 +277,11 @@ class VehiculosViewModelTest {
         vm.cambiarSesion(true)
         vm.refrescarFlota()
         testScheduler.runCurrent()
+
+        assertTrue(esRolConductorORepartidor("repartidor"))
+        assertTrue(esRolConductorORepartidor("Conductor"))
+        assertFalse(esRolConductorORepartidor("operario"))
+        assertEquals(listOf("cond-1", "cond-2"), vm.conductores.map { it.id })
 
         assertEquals(2, vm.kpis.total)
         assertEquals(1, vm.kpis.enRuta)

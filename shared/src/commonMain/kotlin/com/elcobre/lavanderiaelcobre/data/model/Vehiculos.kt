@@ -25,13 +25,19 @@ enum class FiltroFlota(val etiqueta: String) {
     INACTIVOS("Inactivos"),
 }
 
-/** Integrante del equipo interno habilitado como conductor de reparto. */
+private val ROLES_CONDUCTOR_PERMITIDOS = setOf("conductor", "repartidor")
+
+/** Integrante del equipo interno habilitado como conductor de reparto (`conductor` o `repartidor`). */
 data class ConductorFlota(
     val id: String,
     val nombreCompleto: String,
     val rut: String? = null,
     val rol: String = "repartidor",
 )
+
+/** Verifica si el nombre del rol corresponde exclusivamente a `"conductor"` o `"repartidor"`. */
+fun esRolConductorORepartidor(rol: String?): Boolean =
+    rol?.trim()?.lowercase() in ROLES_CONDUCTOR_PERMITIDOS
 
 /** Indicadores operativos de la flota, equivalentes a `KpisFlota` en la web (`lib/vehiculos/modelo.ts`). */
 data class KpisFlota(
