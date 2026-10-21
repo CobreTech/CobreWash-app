@@ -18,163 +18,187 @@ import kotlin.time.Duration.Companion.milliseconds as _milliseconds
 public interface ExampleConnector : com.google.firebase.dataconnect.generated.GeneratedConnector<ExampleConnector> {
   override val dataConnect: com.google.firebase.dataconnect.FirebaseDataConnect
 
-  
+
     public val actualizarEstadoIncidencia: ActualizarEstadoIncidenciaMutation
-  
+
+    public val actualizarEstadoSolicitudContacto: ActualizarEstadoSolicitudContactoMutation
+
     public val actualizarInsumo: ActualizarInsumoMutation
-  
+
     public val actualizarUsuario: ActualizarUsuarioMutation
-  
+
     public val actualizarVehiculo: ActualizarVehiculoMutation
-  
+
     public val adjuntarFotoInspeccionFlota: AdjuntarFotoInspeccionFlotaMutation
-  
+
     public val agregarComandaDetalle: AgregarComandaDetalleMutation
-  
+
     public val agregarComentarioComanda: AgregarComentarioComandaMutation
-  
+
     public val agregarFotoInspeccionVehiculo: AgregarFotoInspeccionVehiculoMutation
-  
+
     public val anularComanda: AnularComandaMutation
-  
+
     public val asociarFlujoComandaPendiente: AsociarFlujoComandaPendienteMutation
-  
+
     public val autoAsignarComandaOperario: AutoAsignarComandaOperarioMutation
-  
+
     public val completarEtapaComanda: CompletarEtapaComandaMutation
-  
+
     public val configurarEtapaProduccion: ConfigurarEtapaProduccionMutation
-  
+
     public val configurarLimitesEtapas: ConfigurarLimitesEtapasMutation
-  
+
     public val crearAviso: CrearAvisoMutation
-  
+
     public val crearClienteAdministrado: CrearClienteAdministradoMutation
-  
+
     public val crearClienteComanda: CrearClienteComandaMutation
-  
+
     public val crearComanda: CrearComandaMutation
-  
+
     public val crearInsumo: CrearInsumoMutation
-  
+
     public val crearSalidaVehiculo: CrearSalidaVehiculoMutation
-  
+
     public val crearTipoPrenda: CrearTipoPrendaMutation
-  
+
     public val crearTipoServicio: CrearTipoServicioMutation
-  
+
     public val crearUsuarioAdministrado: CrearUsuarioAdministradoMutation
-  
+
     public val crearVehiculo: CrearVehiculoMutation
-  
+
     public val diagnosticoComandas: DiagnosticoComandasQuery
-  
+
     public val editarComanda: EditarComandaMutation
-  
+
     public val editarFichaCliente: EditarFichaClienteMutation
-  
+
     public val editarVehiculoFlota: EditarVehiculoFlotaMutation
-  
+
     public val eliminarDetallesComanda: EliminarDetallesComandaMutation
-  
+
     public val entregarComanda: EntregarComandaMutation
-  
+
     public val getAvisosAdministracion: GetAvisosAdministracionQuery
-  
+
     public val getAvisosParaEquipo: GetAvisosParaEquipoQuery
-  
+
     public val getCatalogosComanda: GetCatalogosComandaQuery
-  
+
     public val getComandaDetalle: GetComandaDetalleQuery
-  
+
     public val getComandaDetalleOperario: GetComandaDetalleOperarioQuery
-  
+
     public val getComandaOperativaPorQr: GetComandaOperativaPorQrQuery
-  
+
     public val getComandaPorQr: GetComandaPorQrQuery
-  
+
     public val getComandasActivasCount: GetComandasActivasCountQuery
-  
+
     public val getComandasPaginadas: GetComandasPaginadasQuery
-  
+
     public val getComandasParaAlertas: GetComandasParaAlertasQuery
-  
+
     public val getDetalleReporteCuentas: GetDetalleReporteCuentasQuery
-  
+
     public val getDetalleReporteServicios: GetDetalleReporteServiciosQuery
-  
+
     public val getEtapasProduccion: GetEtapasProduccionQuery
-  
+
     public val getFichasClientes: GetFichasClientesQuery
-  
+
     public val getFiltrosReportes: GetFiltrosReportesQuery
-  
+
     public val getFlotaVehiculos: GetFlotaVehiculosQuery
-  
+
     public val getHistorialVehiculos: GetHistorialVehiculosQuery
-  
+
     public val getIncidencias: GetIncidenciasQuery
-  
+
+    public val getInspeccionParaEvidencias: GetInspeccionParaEvidenciasQuery
+
     public val getInsumoPorQr: GetInsumoPorQrQuery
-  
+
     public val getInsumosOperario: GetInsumosOperarioQuery
-  
+
     public val getInventario: GetInventarioQuery
-  
+
+    public val getLimiteContacto: GetLimiteContactoQuery
+
     public val getMiComandaGuardada: GetMiComandaGuardadaQuery
-  
+
     public val getMiPerfil: GetMiPerfilQuery
-  
+
+    public val getMisComandas: GetMisComandasQuery
+
     public val getMisComandasAsignadas: GetMisComandasAsignadasQuery
-  
+
     public val getMisSalidasVehiculo: GetMisSalidasVehiculoQuery
-  
+
+    public val getMovimientoFlotaPorInspeccion: GetMovimientoFlotaPorInspeccionQuery
+
     public val getPanelProduccion: GetPanelProduccionQuery
-  
+
     public val getReporteCuentas: GetReporteCuentasQuery
-  
+
     public val getReporteServicios: GetReporteServiciosQuery
-  
+
     public val getReporteVolumen: GetReporteVolumenQuery
-  
+
     public val getRoles: GetRolesQuery
-  
+
     public val getSeguimientoProduccion: GetSeguimientoProduccionQuery
-  
+
     public val getSeguimientoPublicoPorNumero: GetSeguimientoPublicoPorNumeroQuery
-  
+
     public val getSeguimientoPublicoPorQr: GetSeguimientoPublicoPorQrQuery
-  
+
+    public val getSolicitudContactoConfirmada: GetSolicitudContactoConfirmadaQuery
+
+    public val getSolicitudesContacto: GetSolicitudesContactoQuery
+
     public val getUsuarios: GetUsuariosQuery
-  
+
     public val getVehiculos: GetVehiculosQuery
-  
+
     public val iniciarSalidaVehiculo: IniciarSalidaVehiculoMutation
-  
+
+    public val prepararLimiteContacto: PrepararLimiteContactoMutation
+
     public val reasignarOperarioEtapa: ReasignarOperarioEtapaMutation
-  
+
     public val registrarEntradaInventario: RegistrarEntradaInventarioMutation
-  
+
+    public val registrarEvidenciaGuardada: RegistrarEvidenciaGuardadaMutation
+
     public val registrarIncidenciaComanda: RegistrarIncidenciaComandaMutation
-  
+
     public val registrarInspeccionAntes: RegistrarInspeccionAntesMutation
-  
+
     public val registrarInspeccionDespues: RegistrarInspeccionDespuesMutation
-  
+
     public val registrarRetornoFlota: RegistrarRetornoFlotaMutation
-  
+
     public val registrarSalidaFlota: RegistrarSalidaFlotaMutation
-  
+
     public val registrarSalidaInventario: RegistrarSalidaInventarioMutation
-  
+
+    public val registrarSolicitudContacto: RegistrarSolicitudContactoMutation
+
     public val registrarVehiculoFlota: RegistrarVehiculoFlotaMutation
-  
+
     public val registrarse: RegistrarseMutation
-  
+
     public val registrarseComoCliente: RegistrarseComoClienteMutation
-  
+
     public val resolverMiIncidencia: ResolverMiIncidenciaMutation
-  
+
+    public val vincularMiComanda: VincularMiComandaMutation
+
+    public val vincularMiFichaVerificada: VincularMiFichaVerificadaMutation
+
 
   public companion object {
     @Suppress("MemberVisibilityCanBePrivate")
@@ -194,7 +218,7 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
 
     private val instances = java.util.WeakHashMap<com.google.firebase.dataconnect.FirebaseDataConnect, ExampleConnectorImpl>()
 
-    
+
   }
 }
 
@@ -217,319 +241,367 @@ public fun ExampleConnector.Companion.getInstance(
 private class ExampleConnectorImpl(
   override val dataConnect: com.google.firebase.dataconnect.FirebaseDataConnect
 ) : ExampleConnector {
-  
+
     override val actualizarEstadoIncidencia by lazy(LazyThreadSafetyMode.PUBLICATION) {
       ActualizarEstadoIncidenciaMutationImpl(this)
     }
-  
+
+    override val actualizarEstadoSolicitudContacto by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      ActualizarEstadoSolicitudContactoMutationImpl(this)
+    }
+
     override val actualizarInsumo by lazy(LazyThreadSafetyMode.PUBLICATION) {
       ActualizarInsumoMutationImpl(this)
     }
-  
+
     override val actualizarUsuario by lazy(LazyThreadSafetyMode.PUBLICATION) {
       ActualizarUsuarioMutationImpl(this)
     }
-  
+
     override val actualizarVehiculo by lazy(LazyThreadSafetyMode.PUBLICATION) {
       ActualizarVehiculoMutationImpl(this)
     }
-  
+
     override val adjuntarFotoInspeccionFlota by lazy(LazyThreadSafetyMode.PUBLICATION) {
       AdjuntarFotoInspeccionFlotaMutationImpl(this)
     }
-  
+
     override val agregarComandaDetalle by lazy(LazyThreadSafetyMode.PUBLICATION) {
       AgregarComandaDetalleMutationImpl(this)
     }
-  
+
     override val agregarComentarioComanda by lazy(LazyThreadSafetyMode.PUBLICATION) {
       AgregarComentarioComandaMutationImpl(this)
     }
-  
+
     override val agregarFotoInspeccionVehiculo by lazy(LazyThreadSafetyMode.PUBLICATION) {
       AgregarFotoInspeccionVehiculoMutationImpl(this)
     }
-  
+
     override val anularComanda by lazy(LazyThreadSafetyMode.PUBLICATION) {
       AnularComandaMutationImpl(this)
     }
-  
+
     override val asociarFlujoComandaPendiente by lazy(LazyThreadSafetyMode.PUBLICATION) {
       AsociarFlujoComandaPendienteMutationImpl(this)
     }
-  
+
     override val autoAsignarComandaOperario by lazy(LazyThreadSafetyMode.PUBLICATION) {
       AutoAsignarComandaOperarioMutationImpl(this)
     }
-  
+
     override val completarEtapaComanda by lazy(LazyThreadSafetyMode.PUBLICATION) {
       CompletarEtapaComandaMutationImpl(this)
     }
-  
+
     override val configurarEtapaProduccion by lazy(LazyThreadSafetyMode.PUBLICATION) {
       ConfigurarEtapaProduccionMutationImpl(this)
     }
-  
+
     override val configurarLimitesEtapas by lazy(LazyThreadSafetyMode.PUBLICATION) {
       ConfigurarLimitesEtapasMutationImpl(this)
     }
-  
+
     override val crearAviso by lazy(LazyThreadSafetyMode.PUBLICATION) {
       CrearAvisoMutationImpl(this)
     }
-  
+
     override val crearClienteAdministrado by lazy(LazyThreadSafetyMode.PUBLICATION) {
       CrearClienteAdministradoMutationImpl(this)
     }
-  
+
     override val crearClienteComanda by lazy(LazyThreadSafetyMode.PUBLICATION) {
       CrearClienteComandaMutationImpl(this)
     }
-  
+
     override val crearComanda by lazy(LazyThreadSafetyMode.PUBLICATION) {
       CrearComandaMutationImpl(this)
     }
-  
+
     override val crearInsumo by lazy(LazyThreadSafetyMode.PUBLICATION) {
       CrearInsumoMutationImpl(this)
     }
-  
+
     override val crearSalidaVehiculo by lazy(LazyThreadSafetyMode.PUBLICATION) {
       CrearSalidaVehiculoMutationImpl(this)
     }
-  
+
     override val crearTipoPrenda by lazy(LazyThreadSafetyMode.PUBLICATION) {
       CrearTipoPrendaMutationImpl(this)
     }
-  
+
     override val crearTipoServicio by lazy(LazyThreadSafetyMode.PUBLICATION) {
       CrearTipoServicioMutationImpl(this)
     }
-  
+
     override val crearUsuarioAdministrado by lazy(LazyThreadSafetyMode.PUBLICATION) {
       CrearUsuarioAdministradoMutationImpl(this)
     }
-  
+
     override val crearVehiculo by lazy(LazyThreadSafetyMode.PUBLICATION) {
       CrearVehiculoMutationImpl(this)
     }
-  
+
     override val diagnosticoComandas by lazy(LazyThreadSafetyMode.PUBLICATION) {
       DiagnosticoComandasQueryImpl(this)
     }
-  
+
     override val editarComanda by lazy(LazyThreadSafetyMode.PUBLICATION) {
       EditarComandaMutationImpl(this)
     }
-  
+
     override val editarFichaCliente by lazy(LazyThreadSafetyMode.PUBLICATION) {
       EditarFichaClienteMutationImpl(this)
     }
-  
+
     override val editarVehiculoFlota by lazy(LazyThreadSafetyMode.PUBLICATION) {
       EditarVehiculoFlotaMutationImpl(this)
     }
-  
+
     override val eliminarDetallesComanda by lazy(LazyThreadSafetyMode.PUBLICATION) {
       EliminarDetallesComandaMutationImpl(this)
     }
-  
+
     override val entregarComanda by lazy(LazyThreadSafetyMode.PUBLICATION) {
       EntregarComandaMutationImpl(this)
     }
-  
+
     override val getAvisosAdministracion by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetAvisosAdministracionQueryImpl(this)
     }
-  
+
     override val getAvisosParaEquipo by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetAvisosParaEquipoQueryImpl(this)
     }
-  
+
     override val getCatalogosComanda by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetCatalogosComandaQueryImpl(this)
     }
-  
+
     override val getComandaDetalle by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetComandaDetalleQueryImpl(this)
     }
-  
+
     override val getComandaDetalleOperario by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetComandaDetalleOperarioQueryImpl(this)
     }
-  
+
     override val getComandaOperativaPorQr by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetComandaOperativaPorQrQueryImpl(this)
     }
-  
+
     override val getComandaPorQr by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetComandaPorQrQueryImpl(this)
     }
-  
+
     override val getComandasActivasCount by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetComandasActivasCountQueryImpl(this)
     }
-  
+
     override val getComandasPaginadas by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetComandasPaginadasQueryImpl(this)
     }
-  
+
     override val getComandasParaAlertas by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetComandasParaAlertasQueryImpl(this)
     }
-  
+
     override val getDetalleReporteCuentas by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetDetalleReporteCuentasQueryImpl(this)
     }
-  
+
     override val getDetalleReporteServicios by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetDetalleReporteServiciosQueryImpl(this)
     }
-  
+
     override val getEtapasProduccion by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetEtapasProduccionQueryImpl(this)
     }
-  
+
     override val getFichasClientes by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetFichasClientesQueryImpl(this)
     }
-  
+
     override val getFiltrosReportes by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetFiltrosReportesQueryImpl(this)
     }
-  
+
     override val getFlotaVehiculos by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetFlotaVehiculosQueryImpl(this)
     }
-  
+
     override val getHistorialVehiculos by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetHistorialVehiculosQueryImpl(this)
     }
-  
+
     override val getIncidencias by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetIncidenciasQueryImpl(this)
     }
-  
+
+    override val getInspeccionParaEvidencias by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GetInspeccionParaEvidenciasQueryImpl(this)
+    }
+
     override val getInsumoPorQr by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetInsumoPorQrQueryImpl(this)
     }
-  
+
     override val getInsumosOperario by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetInsumosOperarioQueryImpl(this)
     }
-  
+
     override val getInventario by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetInventarioQueryImpl(this)
     }
-  
+
+    override val getLimiteContacto by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GetLimiteContactoQueryImpl(this)
+    }
+
     override val getMiComandaGuardada by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetMiComandaGuardadaQueryImpl(this)
     }
-  
+
     override val getMiPerfil by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetMiPerfilQueryImpl(this)
     }
-  
+
+    override val getMisComandas by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GetMisComandasQueryImpl(this)
+    }
+
     override val getMisComandasAsignadas by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetMisComandasAsignadasQueryImpl(this)
     }
-  
+
     override val getMisSalidasVehiculo by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetMisSalidasVehiculoQueryImpl(this)
     }
-  
+
+    override val getMovimientoFlotaPorInspeccion by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GetMovimientoFlotaPorInspeccionQueryImpl(this)
+    }
+
     override val getPanelProduccion by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetPanelProduccionQueryImpl(this)
     }
-  
+
     override val getReporteCuentas by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetReporteCuentasQueryImpl(this)
     }
-  
+
     override val getReporteServicios by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetReporteServiciosQueryImpl(this)
     }
-  
+
     override val getReporteVolumen by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetReporteVolumenQueryImpl(this)
     }
-  
+
     override val getRoles by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetRolesQueryImpl(this)
     }
-  
+
     override val getSeguimientoProduccion by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetSeguimientoProduccionQueryImpl(this)
     }
-  
+
     override val getSeguimientoPublicoPorNumero by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetSeguimientoPublicoPorNumeroQueryImpl(this)
     }
-  
+
     override val getSeguimientoPublicoPorQr by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetSeguimientoPublicoPorQrQueryImpl(this)
     }
-  
+
+    override val getSolicitudContactoConfirmada by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GetSolicitudContactoConfirmadaQueryImpl(this)
+    }
+
+    override val getSolicitudesContacto by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GetSolicitudesContactoQueryImpl(this)
+    }
+
     override val getUsuarios by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetUsuariosQueryImpl(this)
     }
-  
+
     override val getVehiculos by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetVehiculosQueryImpl(this)
     }
-  
+
     override val iniciarSalidaVehiculo by lazy(LazyThreadSafetyMode.PUBLICATION) {
       IniciarSalidaVehiculoMutationImpl(this)
     }
-  
+
+    override val prepararLimiteContacto by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      PrepararLimiteContactoMutationImpl(this)
+    }
+
     override val reasignarOperarioEtapa by lazy(LazyThreadSafetyMode.PUBLICATION) {
       ReasignarOperarioEtapaMutationImpl(this)
     }
-  
+
     override val registrarEntradaInventario by lazy(LazyThreadSafetyMode.PUBLICATION) {
       RegistrarEntradaInventarioMutationImpl(this)
     }
-  
+
+    override val registrarEvidenciaGuardada by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      RegistrarEvidenciaGuardadaMutationImpl(this)
+    }
+
     override val registrarIncidenciaComanda by lazy(LazyThreadSafetyMode.PUBLICATION) {
       RegistrarIncidenciaComandaMutationImpl(this)
     }
-  
+
     override val registrarInspeccionAntes by lazy(LazyThreadSafetyMode.PUBLICATION) {
       RegistrarInspeccionAntesMutationImpl(this)
     }
-  
+
     override val registrarInspeccionDespues by lazy(LazyThreadSafetyMode.PUBLICATION) {
       RegistrarInspeccionDespuesMutationImpl(this)
     }
-  
+
     override val registrarRetornoFlota by lazy(LazyThreadSafetyMode.PUBLICATION) {
       RegistrarRetornoFlotaMutationImpl(this)
     }
-  
+
     override val registrarSalidaFlota by lazy(LazyThreadSafetyMode.PUBLICATION) {
       RegistrarSalidaFlotaMutationImpl(this)
     }
-  
+
     override val registrarSalidaInventario by lazy(LazyThreadSafetyMode.PUBLICATION) {
       RegistrarSalidaInventarioMutationImpl(this)
     }
-  
+
+    override val registrarSolicitudContacto by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      RegistrarSolicitudContactoMutationImpl(this)
+    }
+
     override val registrarVehiculoFlota by lazy(LazyThreadSafetyMode.PUBLICATION) {
       RegistrarVehiculoFlotaMutationImpl(this)
     }
-  
+
     override val registrarse by lazy(LazyThreadSafetyMode.PUBLICATION) {
       RegistrarseMutationImpl(this)
     }
-  
+
     override val registrarseComoCliente by lazy(LazyThreadSafetyMode.PUBLICATION) {
       RegistrarseComoClienteMutationImpl(this)
     }
-  
+
     override val resolverMiIncidencia by lazy(LazyThreadSafetyMode.PUBLICATION) {
       ResolverMiIncidenciaMutationImpl(this)
     }
-  
+
+    override val vincularMiComanda by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      VincularMiComandaMutationImpl(this)
+    }
+
+    override val vincularMiFichaVerificada by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      VincularMiFichaVerificadaMutationImpl(this)
+    }
+
 
   @com.google.firebase.dataconnect.ExperimentalFirebaseDataConnect
   override fun operations(): List<com.google.firebase.dataconnect.generated.GeneratedOperation<ExampleConnector, *, *>> =
@@ -539,6 +611,7 @@ private class ExampleConnectorImpl(
   override fun mutations(): List<com.google.firebase.dataconnect.generated.GeneratedMutation<ExampleConnector, *, *>> =
     listOf(
       actualizarEstadoIncidencia,
+        actualizarEstadoSolicitudContacto,
         actualizarInsumo,
         actualizarUsuario,
         actualizarVehiculo,
@@ -568,19 +641,24 @@ private class ExampleConnectorImpl(
         eliminarDetallesComanda,
         entregarComanda,
         iniciarSalidaVehiculo,
+        prepararLimiteContacto,
         reasignarOperarioEtapa,
         registrarEntradaInventario,
+        registrarEvidenciaGuardada,
         registrarIncidenciaComanda,
         registrarInspeccionAntes,
         registrarInspeccionDespues,
         registrarRetornoFlota,
         registrarSalidaFlota,
         registrarSalidaInventario,
+        registrarSolicitudContacto,
         registrarVehiculoFlota,
         registrarse,
         registrarseComoCliente,
         resolverMiIncidencia,
-        
+        vincularMiComanda,
+        vincularMiFichaVerificada,
+
     )
 
   @com.google.firebase.dataconnect.ExperimentalFirebaseDataConnect
@@ -605,13 +683,17 @@ private class ExampleConnectorImpl(
         getFlotaVehiculos,
         getHistorialVehiculos,
         getIncidencias,
+        getInspeccionParaEvidencias,
         getInsumoPorQr,
         getInsumosOperario,
         getInventario,
+        getLimiteContacto,
         getMiComandaGuardada,
         getMiPerfil,
+        getMisComandas,
         getMisComandasAsignadas,
         getMisSalidasVehiculo,
+        getMovimientoFlotaPorInspeccion,
         getPanelProduccion,
         getReporteCuentas,
         getReporteServicios,
@@ -620,9 +702,11 @@ private class ExampleConnectorImpl(
         getSeguimientoProduccion,
         getSeguimientoPublicoPorNumero,
         getSeguimientoPublicoPorQr,
+        getSolicitudContactoConfirmada,
+        getSolicitudesContacto,
         getUsuarios,
         getVehiculos,
-        
+
     )
 
   @com.google.firebase.dataconnect.ExperimentalFirebaseDataConnect
@@ -769,6 +853,21 @@ private class ActualizarEstadoIncidenciaMutationImpl(
     ActualizarEstadoIncidenciaMutation.Companion.operationName,
     ActualizarEstadoIncidenciaMutation.Companion.dataDeserializer,
     ActualizarEstadoIncidenciaMutation.Companion.variablesSerializer,
+  )
+
+
+private class ActualizarEstadoSolicitudContactoMutationImpl(
+  connector: ExampleConnector
+):
+  ActualizarEstadoSolicitudContactoMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      ActualizarEstadoSolicitudContactoMutation.Data,
+      ActualizarEstadoSolicitudContactoMutation.Variables
+  >(
+    connector,
+    ActualizarEstadoSolicitudContactoMutation.Companion.operationName,
+    ActualizarEstadoSolicitudContactoMutation.Companion.dataDeserializer,
+    ActualizarEstadoSolicitudContactoMutation.Companion.variablesSerializer,
   )
 
 
@@ -1438,7 +1537,7 @@ private class GetFlotaVehiculosQueryImpl(
   GetFlotaVehiculosQuery,
   ExampleConnectorGeneratedQueryImpl<
       GetFlotaVehiculosQuery.Data,
-      Unit
+      GetFlotaVehiculosQuery.Variables
   >(
     connector,
     GetFlotaVehiculosQuery.Companion.operationName,
@@ -1474,6 +1573,21 @@ private class GetIncidenciasQueryImpl(
     GetIncidenciasQuery.Companion.operationName,
     GetIncidenciasQuery.Companion.dataDeserializer,
     GetIncidenciasQuery.Companion.variablesSerializer,
+  )
+
+
+private class GetInspeccionParaEvidenciasQueryImpl(
+  connector: ExampleConnector
+):
+  GetInspeccionParaEvidenciasQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      GetInspeccionParaEvidenciasQuery.Data,
+      GetInspeccionParaEvidenciasQuery.Variables
+  >(
+    connector,
+    GetInspeccionParaEvidenciasQuery.Companion.operationName,
+    GetInspeccionParaEvidenciasQuery.Companion.dataDeserializer,
+    GetInspeccionParaEvidenciasQuery.Companion.variablesSerializer,
   )
 
 
@@ -1522,6 +1636,21 @@ private class GetInventarioQueryImpl(
   )
 
 
+private class GetLimiteContactoQueryImpl(
+  connector: ExampleConnector
+):
+  GetLimiteContactoQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      GetLimiteContactoQuery.Data,
+      GetLimiteContactoQuery.Variables
+  >(
+    connector,
+    GetLimiteContactoQuery.Companion.operationName,
+    GetLimiteContactoQuery.Companion.dataDeserializer,
+    GetLimiteContactoQuery.Companion.variablesSerializer,
+  )
+
+
 private class GetMiComandaGuardadaQueryImpl(
   connector: ExampleConnector
 ):
@@ -1552,6 +1681,21 @@ private class GetMiPerfilQueryImpl(
   )
 
 
+private class GetMisComandasQueryImpl(
+  connector: ExampleConnector
+):
+  GetMisComandasQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      GetMisComandasQuery.Data,
+      GetMisComandasQuery.Variables
+  >(
+    connector,
+    GetMisComandasQuery.Companion.operationName,
+    GetMisComandasQuery.Companion.dataDeserializer,
+    GetMisComandasQuery.Companion.variablesSerializer,
+  )
+
+
 private class GetMisComandasAsignadasQueryImpl(
   connector: ExampleConnector
 ):
@@ -1579,6 +1723,21 @@ private class GetMisSalidasVehiculoQueryImpl(
     GetMisSalidasVehiculoQuery.Companion.operationName,
     GetMisSalidasVehiculoQuery.Companion.dataDeserializer,
     GetMisSalidasVehiculoQuery.Companion.variablesSerializer,
+  )
+
+
+private class GetMovimientoFlotaPorInspeccionQueryImpl(
+  connector: ExampleConnector
+):
+  GetMovimientoFlotaPorInspeccionQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      GetMovimientoFlotaPorInspeccionQuery.Data,
+      GetMovimientoFlotaPorInspeccionQuery.Variables
+  >(
+    connector,
+    GetMovimientoFlotaPorInspeccionQuery.Companion.operationName,
+    GetMovimientoFlotaPorInspeccionQuery.Companion.dataDeserializer,
+    GetMovimientoFlotaPorInspeccionQuery.Companion.variablesSerializer,
   )
 
 
@@ -1702,6 +1861,36 @@ private class GetSeguimientoPublicoPorQrQueryImpl(
   )
 
 
+private class GetSolicitudContactoConfirmadaQueryImpl(
+  connector: ExampleConnector
+):
+  GetSolicitudContactoConfirmadaQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      GetSolicitudContactoConfirmadaQuery.Data,
+      GetSolicitudContactoConfirmadaQuery.Variables
+  >(
+    connector,
+    GetSolicitudContactoConfirmadaQuery.Companion.operationName,
+    GetSolicitudContactoConfirmadaQuery.Companion.dataDeserializer,
+    GetSolicitudContactoConfirmadaQuery.Companion.variablesSerializer,
+  )
+
+
+private class GetSolicitudesContactoQueryImpl(
+  connector: ExampleConnector
+):
+  GetSolicitudesContactoQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      GetSolicitudesContactoQuery.Data,
+      GetSolicitudesContactoQuery.Variables
+  >(
+    connector,
+    GetSolicitudesContactoQuery.Companion.operationName,
+    GetSolicitudesContactoQuery.Companion.dataDeserializer,
+    GetSolicitudesContactoQuery.Companion.variablesSerializer,
+  )
+
+
 private class GetUsuariosQueryImpl(
   connector: ExampleConnector
 ):
@@ -1747,6 +1936,21 @@ private class IniciarSalidaVehiculoMutationImpl(
   )
 
 
+private class PrepararLimiteContactoMutationImpl(
+  connector: ExampleConnector
+):
+  PrepararLimiteContactoMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      PrepararLimiteContactoMutation.Data,
+      PrepararLimiteContactoMutation.Variables
+  >(
+    connector,
+    PrepararLimiteContactoMutation.Companion.operationName,
+    PrepararLimiteContactoMutation.Companion.dataDeserializer,
+    PrepararLimiteContactoMutation.Companion.variablesSerializer,
+  )
+
+
 private class ReasignarOperarioEtapaMutationImpl(
   connector: ExampleConnector
 ):
@@ -1774,6 +1978,21 @@ private class RegistrarEntradaInventarioMutationImpl(
     RegistrarEntradaInventarioMutation.Companion.operationName,
     RegistrarEntradaInventarioMutation.Companion.dataDeserializer,
     RegistrarEntradaInventarioMutation.Companion.variablesSerializer,
+  )
+
+
+private class RegistrarEvidenciaGuardadaMutationImpl(
+  connector: ExampleConnector
+):
+  RegistrarEvidenciaGuardadaMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      RegistrarEvidenciaGuardadaMutation.Data,
+      RegistrarEvidenciaGuardadaMutation.Variables
+  >(
+    connector,
+    RegistrarEvidenciaGuardadaMutation.Companion.operationName,
+    RegistrarEvidenciaGuardadaMutation.Companion.dataDeserializer,
+    RegistrarEvidenciaGuardadaMutation.Companion.variablesSerializer,
   )
 
 
@@ -1867,6 +2086,21 @@ private class RegistrarSalidaInventarioMutationImpl(
   )
 
 
+private class RegistrarSolicitudContactoMutationImpl(
+  connector: ExampleConnector
+):
+  RegistrarSolicitudContactoMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      RegistrarSolicitudContactoMutation.Data,
+      RegistrarSolicitudContactoMutation.Variables
+  >(
+    connector,
+    RegistrarSolicitudContactoMutation.Companion.operationName,
+    RegistrarSolicitudContactoMutation.Companion.dataDeserializer,
+    RegistrarSolicitudContactoMutation.Companion.variablesSerializer,
+  )
+
+
 private class RegistrarVehiculoFlotaMutationImpl(
   connector: ExampleConnector
 ):
@@ -1927,3 +2161,31 @@ private class ResolverMiIncidenciaMutationImpl(
   )
 
 
+private class VincularMiComandaMutationImpl(
+  connector: ExampleConnector
+):
+  VincularMiComandaMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      VincularMiComandaMutation.Data,
+      VincularMiComandaMutation.Variables
+  >(
+    connector,
+    VincularMiComandaMutation.Companion.operationName,
+    VincularMiComandaMutation.Companion.dataDeserializer,
+    VincularMiComandaMutation.Companion.variablesSerializer,
+  )
+
+
+private class VincularMiFichaVerificadaMutationImpl(
+  connector: ExampleConnector
+):
+  VincularMiFichaVerificadaMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      VincularMiFichaVerificadaMutation.Data,
+      Unit
+  >(
+    connector,
+    VincularMiFichaVerificadaMutation.Companion.operationName,
+    VincularMiFichaVerificadaMutation.Companion.dataDeserializer,
+    VincularMiFichaVerificadaMutation.Companion.variablesSerializer,
+  )
