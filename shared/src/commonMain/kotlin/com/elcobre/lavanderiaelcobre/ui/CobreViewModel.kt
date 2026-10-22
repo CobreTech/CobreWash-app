@@ -23,6 +23,8 @@ import com.elcobre.lavanderiaelcobre.data.model.Sesion
 import com.elcobre.lavanderiaelcobre.data.InventarioRepository
 import com.elcobre.lavanderiaelcobre.data.FirebaseInventarioRepository
 import com.elcobre.lavanderiaelcobre.data.auth.SesionPersistente
+import com.elcobre.lavanderiaelcobre.data.auth.PerfilResultado
+import com.elcobre.lavanderiaelcobre.data.auth.restaurarPerfilAutenticado
 import com.elcobre.lavanderiaelcobre.data.model.TipoAlerta
 import com.elcobre.lavanderiaelcobre.data.model.TurnoPlanta
 import com.elcobre.lavanderiaelcobre.ui.screens.login.sesionParaRol
@@ -52,6 +54,7 @@ class CobreViewModel(
     private val scopeOverride: CoroutineScope? = null,
     private val avisosRepository: AvisosRepository = FirebaseAvisosRepository(),
     inventarioRepository: InventarioRepository = FirebaseInventarioRepository(),
+    private val restaurarPerfil: suspend () -> PerfilResultado? = ::restaurarPerfilAutenticado,
 ) : ViewModel() {
     private val scope get() = scopeOverride ?: viewModelScope
     val inventario = InventarioState(scope, inventarioRepository)
@@ -202,19 +205,20 @@ class CobreViewModel(
     }
 
     fun restaurarSesionSiExiste() {
-        val guardada = SesionPersistente.obtener() ?: return
-        val turnoEncontrado = guardada.turno?.let { et ->
-            TurnoPlanta.entries.firstOrNull {
-                it.etiqueta.equals(et, ignoreCase = true) || it.corto.equals(et, ignoreCase = true)
+        if (SesionPersistente.obtener() == null) return
+        val inicio = generacion
+        scope.launch {
+            val perfil = restaurarPerfil()
+            if (inicio != generacion) return@launch
+            val valida = (perfil as? PerfilResultado.Exito)?.let {
+                sesionParaRol(it.rolNombre, it.nombre, TurnoPlanta.turnoActual())
             }
-        } ?: TurnoPlanta.turnoActual()
-        val sesionRestaurada = sesionParaRol(
-            rolNombre = guardada.rol,
-            nombre = guardada.nombre,
-            turno = turnoEncontrado,
-        )
-        if (sesionRestaurada != null) {
-            iniciarSesion(sesionRestaurada)
+            if (valida != null) iniciarSesion(valida)
+            else {
+                errorOperacion = (perfil as? PerfilResultado.Error)?.mensaje
+                    ?: "La sesión guardada ya no es válida. Inicia sesión nuevamente."
+                if (perfil == null) SesionPersistente.limpiar()
+            }
         }
     }
 

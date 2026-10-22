@@ -1,5 +1,6 @@
 package com.elcobre.lavanderiaelcobre
 
+import com.elcobre.lavanderiaelcobre.data.auth.PerfilResultado
 import com.elcobre.lavanderiaelcobre.data.auth.DatosSesionGuardada
 import com.elcobre.lavanderiaelcobre.data.auth.SesionPersistente
 import com.elcobre.lavanderiaelcobre.data.model.Administrador
@@ -33,9 +34,9 @@ class CobreViewModelTest {
         SesionPersistente.limpiar()
     }
 
-    private fun crearViewModel(): CobreViewModel {
+    private fun crearViewModel(perfil: PerfilResultado? = null): CobreViewModel {
         val vm = CobreViewModel(FakeComandasRepository(),
-            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.test.UnconfinedTestDispatcher()))
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.test.UnconfinedTestDispatcher()), restaurarPerfil = { perfil })
         vm.refrescarComandas()
         return vm
     }
@@ -67,7 +68,7 @@ class CobreViewModelTest {
     }
 
     @Test
-    fun restaurarSesionSiExiste_conSesionGuardada_iniciaSesionAutomaticamente() {
+    fun restaurarSesionSiExiste_conPreferenciaLocalSinIdentidad_noIniciaSesion() {
         SesionPersistente.guardar(
             DatosSesionGuardada(
                 email = "admin@cobre.cl",
@@ -78,10 +79,32 @@ class CobreViewModelTest {
         val vm = crearViewModel()
         vm.restaurarSesionSiExiste()
 
-        assertEquals(Pantalla.Vehiculos, vm.pantalla)
-        assertNotNull(vm.administrador)
-        assertEquals("Admin Flota", vm.administrador?.nombre)
+        assertEquals(Pantalla.Login, vm.pantalla)
+        assertNull(vm.administrador)
+        assertNull(vm.sesion)
         SesionPersistente.limpiar()
+    }
+
+    @Test
+    fun restauracion_usaElRolActualDelServidor() {
+        SesionPersistente.guardar(DatosSesionGuardada("admin@cobre.cl", "Rol viejo", "admin"))
+        val vm = crearViewModel(PerfilResultado.Exito("Nombre vigente", "operario"))
+        assertEquals(Pantalla.Dashboard, vm.pantalla)
+        assertNull(vm.administrador)
+        assertEquals("Nombre vigente", vm.operario?.nombre)
+    }
+
+    @Test
+    fun restauracion_rechazaPerfilInactivoOErrorDeValidacion() {
+        SesionPersistente.guardar(DatosSesionGuardada("admin@cobre.cl", "Admin", "admin"))
+        val vm = CobreViewModel(
+            FakeComandasRepository(),
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.test.UnconfinedTestDispatcher()),
+            restaurarPerfil = { PerfilResultado.Error("La cuenta está inactiva") },
+        )
+        assertEquals(Pantalla.Login, vm.pantalla)
+        assertNull(vm.sesion)
+        assertEquals("La cuenta está inactiva", vm.errorOperacion)
     }
 
     @Test
