@@ -52,10 +52,10 @@ actual suspend fun getMisComandasAsignadasFirebase(): List<Pedido> = solicitud {
             limit = 50
             offset = desplazamiento
         }.execute(QueryRef.FetchPolicy.SERVER_ONLY).data.comandas
-        for (item in pagina) getComandaDetalleFirebase(item.id.toString())?.let(resultado::add)
+        resultado.addAll(pagina.map(::mapearAsignada))
         desplazamiento += pagina.size
     } while (pagina.size == 50)
-    resultado
+    resultado.distinctBy { it.id }
 }
 
 private fun fecha(timestamp: com.google.firebase.Timestamp?): String = timestamp?.let {
@@ -76,6 +76,41 @@ actual suspend fun getComandaDetalleFirebase(id: String): Pedido? = solicitud {
 }
 
 private fun mapearComanda(c: GetComandaDetalleOperarioQuery.Data.Comanda): Pedido {
+    val etapas = c.comandaEtapas_on_comanda.sortedBy { it.ordenEtapa ?: it.etapa.orden }
+    val activa = etapas.firstOrNull { it.estado.value != EtapaEstado.COMPLETADA }
+    val orden = activa?.let { it.ordenEtapa ?: it.etapa.orden }
+    return Pedido(
+        id = c.id.toString(), comanda = c.numeroComanda, cliente = c.cliente.nombre,
+        tipo = TipoComanda.EN_TIENDA, tipoServicio = c.comandaDetalles_on_comanda
+            .map { it.tipoServicio.nombre }.distinct().joinToString(", "),
+        prioridad = Prioridad.MEDIA, piezas = c.comandaDetalles_on_comanda.sumOf { it.cantidad },
+        plazoEntrega = fecha(c.fechaEntregaEstimada), etapaActual = etapa(orden ?: 5),
+        historial = c.comandaHistorialEstados_on_comanda.map {
+            EventoHistorial(if (it.motivo?.startsWith("Comentario:") == true) TipoEvento.COMENTARIO else TipoEvento.CAMBIO_ETAPA,
+                it.estadoNuevo.stringValue,
+                it.motivo.orEmpty(), fecha(it.fecha), it.usuario?.nombre ?: "Sistema")
+        } + c.incidenciaComandas_on_comanda.map {
+            EventoHistorial(if (it.estado.value == IncidenciaEstado.RESUELTA) TipoEvento.ALERTA_RESUELTA else TipoEvento.ALERTA,
+                "${it.motivo} - ${it.estado.stringValue}", it.descripcion.orEmpty(), fecha(it.fecha), it.reportadaPor.nombre)
+        },
+        alertaActiva = if (c.incidenciaComandas_on_comanda.any { it.estado.value != IncidenciaEstado.RESUELTA }) {
+            TipoAlerta.INCIDENCIA
+        } else null,
+        etapaIdDb = activa?.etapaId?.toString(), ordenEtapaDb = orden, estadoComandaDb = c.estado.stringValue,
+        datosComanda = listOfNotNull(
+            "Número: ${c.numeroComanda}",
+            "Recepción: ${fecha(c.fechaRecepcion)}",
+            c.observaciones?.takeIf { it.isNotBlank() }?.let { "Observaciones: $it" }
+        ),
+        prendas = c.comandaDetalles_on_comanda.map {
+            val d = it.detalle?.takeIf { d -> d.isNotBlank() }?.let { d -> " ($d)" } ?: ""
+            "${it.cantidad}x ${it.tipoPrenda.nombre} - ${it.tipoServicio.nombre}$d"
+        },
+        etapasDetalle = emptyList(),
+    )
+}
+
+private fun mapearAsignada(c: GetMisComandasAsignadasQuery.Data.ComandasItem): Pedido {
     val etapas = c.comandaEtapas_on_comanda.sortedBy { it.ordenEtapa ?: it.etapa.orden }
     val activa = etapas.firstOrNull { it.estado.value != EtapaEstado.COMPLETADA }
     val orden = activa?.let { it.ordenEtapa ?: it.etapa.orden }

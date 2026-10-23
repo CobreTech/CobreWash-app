@@ -96,8 +96,9 @@ import com.elcobre.lavanderiaelcobre.ui.theme.cobreIsDark
 fun CobreApp() {
     val vm: CobreViewModel = viewModel { CobreViewModel() }
     ActualizarAvisosVisibles(vm)
-    LaunchedEffect(vm.sesion) {
-        if (vm.operario != null) {
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(vm.sesion, lifecycle) {
+        if (vm.operario != null) lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 kotlinx.coroutines.delay(30_000)
                 vm.sincronizarTurnoAutomatico()
@@ -730,4 +731,3 @@ private fun NavTabButton(
         Text(label, style = MaterialTheme.typography.labelSmall, color = accent)
     }
 }
-
