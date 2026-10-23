@@ -2,6 +2,8 @@ package com.elcobre.lavanderiaelcobre.data
 
 private const val MENSAJE_IOS = "La gestión de vehículos de Firebase aún no está disponible en iOS."
 
+internal actual fun descartarReintentosFlotaFirebase() = Unit
+
 internal actual suspend fun consultarFlotaFirebase(): EstadoFlotaRemota =
     throw OperacionComandaException(MENSAJE_IOS)
 

@@ -53,6 +53,7 @@ data class RetornoFlotaInput(
 )
 
 interface VehiculosRepository {
+    fun descartarReintentos() = Unit
     suspend fun consultarFlota(): EstadoFlotaRemota
     suspend fun registrarVehiculo(input: NuevoVehiculoInput): String
     suspend fun editarVehiculo(input: EditarVehiculoInput)
@@ -61,6 +62,7 @@ interface VehiculosRepository {
 }
 
 class FirebaseVehiculosRepository : VehiculosRepository {
+    override fun descartarReintentos() = descartarReintentosFlotaFirebase()
     override suspend fun consultarFlota(): EstadoFlotaRemota = consultarFlotaFirebase()
     override suspend fun registrarVehiculo(input: NuevoVehiculoInput): String = registrarVehiculoFirebase(input)
     override suspend fun editarVehiculo(input: EditarVehiculoInput) = editarVehiculoFirebase(input)
@@ -69,6 +71,7 @@ class FirebaseVehiculosRepository : VehiculosRepository {
 }
 
 internal expect suspend fun consultarFlotaFirebase(): EstadoFlotaRemota
+internal expect fun descartarReintentosFlotaFirebase()
 internal expect suspend fun registrarVehiculoFirebase(input: NuevoVehiculoInput): String
 internal expect suspend fun editarVehiculoFirebase(input: EditarVehiculoInput)
 internal expect suspend fun registrarSalidaFirebase(input: SalidaFlotaInput): String

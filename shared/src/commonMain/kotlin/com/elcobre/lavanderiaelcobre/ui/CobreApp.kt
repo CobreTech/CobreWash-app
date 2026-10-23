@@ -378,6 +378,8 @@ private fun VehiculosDestino(vm: CobreViewModel) {
             operacionEnCurso = vehiculosVm.operacionEnCurso,
             error = vehiculosVm.error,
             mensajeExito = vehiculosVm.mensajeExito,
+            tieneFotosPendientes = vehiculosVm::tieneFotosPendientes,
+            onDescartarReintentos = vehiculosVm::descartarReintentos,
             mostrarTopBar = !isTablet,
             onToggleTema = { vm.alternarTema(isDark) },
             onCambiarBusqueda = { vehiculosVm.actualizarBusqueda(it) },

@@ -42,6 +42,8 @@ class VehiculosViewModel(
 ) : ViewModel() {
 
     private val scope: CoroutineScope get() = scopeOverride ?: viewModelScope
+    private val salidasConFotosPendientes = mutableMapOf<String, SalidaFlotaInput>()
+    private val retornosConFotosPendientes = mutableMapOf<String, RetornoFlotaInput>()
 
     private val _vehiculos: SnapshotStateList<Vehiculo> = mutableStateListOf()
     val vehiculos: List<Vehiculo> get() = _vehiculos
@@ -96,6 +98,9 @@ class VehiculosViewModel(
 
     fun cambiarSesion(activo: Boolean) {
         generacion++
+        salidasConFotosPendientes.clear()
+        retornosConFotosPendientes.clear()
+        repository?.descartarReintentos()
         habilitado = activo
         cargando = false
         operacionEnCurso = false
@@ -121,6 +126,15 @@ class VehiculosViewModel(
     fun limpiarMensajes() {
         error = null
         mensajeExito = null
+    }
+
+    fun tieneFotosPendientes(vehiculoId: String): Boolean =
+        salidasConFotosPendientes.containsKey(vehiculoId) || retornosConFotosPendientes.containsKey(vehiculoId)
+
+    fun descartarReintentos() {
+        salidasConFotosPendientes.clear()
+        retornosConFotosPendientes.clear()
+        repository?.descartarReintentos()
     }
 
     fun refrescarFlota() {
@@ -280,7 +294,8 @@ class VehiculosViewModel(
         repartidorId: String? = null,
         estadoVehiculo: EstadoCondicionVehiculo = EstadoCondicionVehiculo.APTO,
     ) {
-        val errorValidacion = validarSalidaLocal(vehiculoId, km, estadoVehiculo)
+        val errorValidacion = if (salidasConFotosPendientes.containsKey(vehiculoId)) null
+            else validarSalidaLocal(vehiculoId, km, estadoVehiculo)
         if (errorValidacion != null) {
             error = errorValidacion
             return
@@ -311,16 +326,21 @@ class VehiculosViewModel(
                 error = "Selecciona un conductor habilitado para autorizar la salida."
             } else {
                 ejecutarMutacion("Salida de flota registrada correctamente.") {
-                    repo.registrarSalida(
-                        SalidaFlotaInput(
+                    val input = salidasConFotosPendientes[vehiculoId]?.copy(fotos = fotos) ?: SalidaFlotaInput(
                             vehiculoId = vehiculoId,
                             repartidorId = idConductor,
                             kilometraje = km,
                             estadoVehiculo = estadoVehiculo,
                             observaciones = observaciones,
                             fotos = fotos,
-                        ),
-                    )
+                        )
+                    try {
+                        repo.registrarSalida(input)
+                        salidasConFotosPendientes.remove(vehiculoId)
+                    } catch (causa: OperacionComandaException) {
+                        if (causa.message?.startsWith("La salida ya se guardó") == true) salidasConFotosPendientes[vehiculoId] = input
+                        throw causa
+                    }
                 }
             }
         }
@@ -333,6 +353,22 @@ class VehiculosViewModel(
         fotos: List<FotoChequeo>,
         observaciones: String?,
         estadoVehiculo: EstadoCondicionVehiculo = EstadoCondicionVehiculo.APTO,
+    ) {
+        val pendiente = retornosConFotosPendientes[vehiculoId]
+        if (pendiente != null && repository != null) {
+            ejecutarMutacion("Retorno de vehículo registrado correctamente.") {
+                repository.registrarRetorno(pendiente.copy(fotos = fotos))
+                retornosConFotosPendientes.remove(vehiculoId)
+            }
+        } else registrarRetornoNuevo(vehiculoId, km, fotos, observaciones, estadoVehiculo)
+    }
+
+    private fun registrarRetornoNuevo(
+        vehiculoId: String,
+        km: Int,
+        fotos: List<FotoChequeo>,
+        observaciones: String?,
+        estadoVehiculo: EstadoCondicionVehiculo,
     ) {
         val activo = chequeoEnRuta(vehiculoId) ?: return
         val kmMinimo = activo.kmSalida ?: _vehiculos.firstOrNull { it.id == vehiculoId }?.kilometrajeActual ?: 0
@@ -351,15 +387,18 @@ class VehiculosViewModel(
             mensajeExito = "Retorno del vehículo registrado."
         } else {
             ejecutarMutacion("Retorno de vehículo registrado correctamente.") {
-                repo.registrarRetorno(
-                    RetornoFlotaInput(
+                val input = RetornoFlotaInput(
                         salidaId = activo.id,
                         kilometraje = km,
                         estadoVehiculo = estadoVehiculo,
                         observaciones = observaciones,
                         fotos = fotos,
-                    ),
-                )
+                    )
+                try { repo.registrarRetorno(input) }
+                catch (causa: OperacionComandaException) {
+                    if (causa.message?.startsWith("El retorno ya se guardó") == true) retornosConFotosPendientes[vehiculoId] = input
+                    throw causa
+                }
             }
         }
     }

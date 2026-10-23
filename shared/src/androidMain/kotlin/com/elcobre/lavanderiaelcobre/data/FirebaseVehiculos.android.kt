@@ -24,6 +24,13 @@ import java.util.UUID
 import kotlin.math.roundToInt
 
 private const val MAX_FOTOS_INSPECCION = 20
+private val salidasPendientes = java.util.concurrent.ConcurrentHashMap<String, Pair<UUID, UUID>>()
+private val retornosPendientes = java.util.concurrent.ConcurrentHashMap<String, UUID>()
+
+internal actual fun descartarReintentosFlotaFirebase() {
+    salidasPendientes.clear()
+    retornosPendientes.clear()
+}
 
 private fun mapearCondicionADataConnect(estado: EstadoCondicionVehiculo): EstadoVehiculo = when (estado) {
     EstadoCondicionVehiculo.APTO -> EstadoVehiculo.APTO
@@ -79,22 +86,29 @@ private fun mapearSalidaAChequeo(
 }
 
 internal actual suspend fun consultarFlotaFirebase(): EstadoFlotaRemota = solicitud {
-    val data = ExampleConnector.instance.getFlotaVehiculos
-        .ref()
-        .execute(QueryRef.FetchPolicy.SERVER_ONLY)
-        .data
+    var data: GetFlotaVehiculosQuery.Data? = null
+    val salidas = mutableListOf<GetFlotaVehiculosQuery.Data.SalidasItem>()
+    var offset = 0
+    do {
+        val pagina = ExampleConnector.instance.getFlotaVehiculos.ref { limit = 200; this.offset = offset }
+            .execute(QueryRef.FetchPolicy.SERVER_ONLY).data
+        data = pagina
+        salidas.addAll(pagina.salidas)
+        offset += pagina.salidas.size
+    } while (pagina.salidas.size == 200)
+    val completa = requireNotNull(data).copy(salidas = salidas.distinctBy { it.id })
     val zona = TimeZone.getTimeZone("America/Santiago")
     val locale = Locale.forLanguageTag("es-CL")
     val formatoFecha = SimpleDateFormat("dd/MM/yyyy", locale).apply { timeZone = zona }
     val formatoHora = SimpleDateFormat("HH:mm", locale).apply { timeZone = zona }
 
-    val salidasVigentes = data.salidas.filter { it.estado.value != SalidaVehiculoEstado.CANCELADA }
+    val salidasVigentes = completa.salidas.filter { it.estado.value != SalidaVehiculoEstado.CANCELADA }
     val maxKmPorVehiculo = salidasVigentes.groupBy { it.vehiculo.id.toString() }
         .mapValues { (_, viajes) ->
             viajes.flatMap { it.inspecciones }.maxOfOrNull { it.kilometraje.roundToInt() } ?: 0
         }
 
-    val vehiculos = data.vehiculos.map { item ->
+    val vehiculos = completa.vehiculos.map { item ->
         val id = item.id.toString()
         Vehiculo(
             id = id,
@@ -108,7 +122,7 @@ internal actual suspend fun consultarFlotaFirebase(): EstadoFlotaRemota = solici
         )
     }
 
-    val conductores = data.conductores
+    val conductores = completa.conductores
         .filter { esRolConductorORepartidor(it.rol.nombre) }
         .map { item ->
             val nombreCompleto = listOfNotNull(item.nombre, item.apellido)
@@ -160,44 +174,60 @@ internal actual suspend fun editarVehiculoFirebase(input: EditarVehiculoInput): 
 }
 
 private suspend fun adjuntarFotosInspeccion(inspeccionId: UUID, fotos: List<FotoChequeo>) {
-    fotos.take(MAX_FOTOS_INSPECCION).forEachIndexed { indice, foto ->
-        val orden = indice + 1
-        val limpia = foto.uri.trim().replace(Regex("\\s+"), "-").take(480)
-        val ruta = if (limpia.length >= 5) limpia else "vehiculos/inspecciones/$inspeccionId/foto-$orden.jpg"
-        ExampleConnector.instance.adjuntarFotoInspeccionFlota.execute(
-            inspeccionId = inspeccionId,
-            rutaStorage = ruta,
-        ) {
-            descripcion = foto.descripcion?.trim()?.takeIf { it.isNotEmpty() }
-            this.orden = orden
-        }
-    }
+    require(fotos.size <= MAX_FOTOS_INSPECCION) { "Máximo 20 fotografías por inspección." }
+    for ((indice, foto) in fotos.withIndex()) subirFotoInspeccion(inspeccionId.toString(), foto, indice + 1)
 }
 
 internal actual suspend fun registrarSalidaFirebase(input: SalidaFlotaInput): String = solicitud {
+    validarArchivosEvidencia(input.fotos)
+    val clave = "${com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid}|${input.copy(fotos = emptyList())}"
+    val ids = salidasPendientes.getOrPut(clave) { UUID.randomUUID() to UUID.randomUUID() }
+    val previa = ExampleConnector.instance.getMovimientoFlotaPorInspeccion.ref(ids.second)
+        .execute(QueryRef.FetchPolicy.SERVER_ONLY).data.inspeccionVehiculo
     val obs = input.observaciones?.trim()?.takeIf { it.isNotEmpty() }
-    val resultado = ExampleConnector.instance.registrarSalidaFlota.execute(
-        vehiculoId = UUID.fromString(input.vehiculoId),
-        repartidorId = input.repartidorId,
-        kilometraje = input.kilometraje.toDouble(),
-        estadoVehiculo = mapearCondicionADataConnect(input.estadoVehiculo),
-    ) {
-        observaciones = obs?.take(300)
-        observacionesInspeccion = obs?.take(500)
+    val salidaId = if (previa != null) previa.salidaId else {
+        ExampleConnector.instance.registrarSalidaFlota.execute(
+            vehiculoId = UUID.fromString(input.vehiculoId), repartidorId = input.repartidorId,
+            kilometraje = input.kilometraje.toDouble(), estadoVehiculo = mapearCondicionADataConnect(input.estadoVehiculo),
+        ) {
+            salidaId = ids.first
+            inspeccionId = ids.second
+            observaciones = obs?.take(300)
+            observacionesInspeccion = obs?.take(500)
+        }.data.salida.id
     }
-    adjuntarFotosInspeccion(resultado.data.inspeccion.id, input.fotos)
-    resultado.data.salida.id.toString()
+    try { adjuntarFotosInspeccion(ids.second, input.fotos) }
+    catch (error: OperacionComandaException) {
+        throw OperacionComandaException(
+            "La salida ya se guardó. Hay fotografías pendientes: reintenta con los mismos datos. " + error.message, error,
+        )
+    }
+    salidasPendientes.remove(clave)
+    salidaId.toString()
 }
 
 internal actual suspend fun registrarRetornoFirebase(input: RetornoFlotaInput): Unit = solicitud {
-    val obs = input.observaciones?.trim()?.takeIf { it.isNotEmpty() }
-    val resultado = ExampleConnector.instance.registrarRetornoFlota.execute(
-        salidaId = UUID.fromString(input.salidaId),
-        kilometraje = input.kilometraje.toDouble(),
-        estadoVehiculo = mapearCondicionADataConnect(input.estadoVehiculo),
-    ) {
-        observacionesRetorno = obs?.take(300)
-        observacionesInspeccion = obs?.take(500)
+    validarArchivosEvidencia(input.fotos)
+    val clave = "${com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid}|${input.copy(fotos = emptyList())}"
+    val id = retornosPendientes.getOrPut(clave) { UUID.randomUUID() }
+    val previa = ExampleConnector.instance.getMovimientoFlotaPorInspeccion.ref(id)
+        .execute(QueryRef.FetchPolicy.SERVER_ONLY).data.inspeccionVehiculo
+    if (previa == null) {
+        val obs = input.observaciones?.trim()?.takeIf { it.isNotEmpty() }
+        ExampleConnector.instance.registrarRetornoFlota.execute(
+            salidaId = UUID.fromString(input.salidaId), kilometraje = input.kilometraje.toDouble(),
+            estadoVehiculo = mapearCondicionADataConnect(input.estadoVehiculo),
+        ) {
+            inspeccionId = id
+            observacionesRetorno = obs?.take(300)
+            observacionesInspeccion = obs?.take(500)
+        }
     }
-    adjuntarFotosInspeccion(resultado.data.inspeccion.id, input.fotos)
+    try { adjuntarFotosInspeccion(id, input.fotos) }
+    catch (error: OperacionComandaException) {
+        throw OperacionComandaException(
+            "El retorno ya se guardó. Hay fotografías pendientes: reintenta con los mismos datos. " + error.message, error,
+        )
+    }
+    retornosPendientes.remove(clave)
 }

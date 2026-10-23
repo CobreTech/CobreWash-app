@@ -136,6 +136,8 @@ fun VehiculosScreen(
     operacionEnCurso: Boolean = false,
     error: String? = null,
     mensajeExito: String? = null,
+    tieneFotosPendientes: (String) -> Boolean = { false },
+    onDescartarReintentos: () -> Unit = {},
     mostrarTopBar: Boolean = true,
     onToggleTema: (() -> Unit)? = null,
     onCambiarBusqueda: (String) -> Unit = {},
@@ -167,20 +169,15 @@ fun VehiculosScreen(
     var mostrandoAltaModal by remember { mutableStateOf(false) }
 
     val algunModalAbierto = vehiculoChequeoModal != null || vehiculoHistorialModal != null || mostrandoAltaModal
-    CobreBackHandler(enabled = algunModalAbierto) {
+    CobreBackHandler(enabled = algunModalAbierto && !operacionEnCurso) {
         when {
-            vehiculoChequeoModal != null -> vehiculoChequeoModal = null
+            vehiculoChequeoModal != null -> { onDescartarReintentos(); vehiculoChequeoModal = null }
             vehiculoHistorialModal != null -> vehiculoHistorialModal = null
             mostrandoAltaModal -> mostrandoAltaModal = false
         }
     }
 
-    LaunchedEffect(mensajeExito) {
-        if (mensajeExito != null) {
-            delay(3500)
-            onLimpiarMensajes()
-        }
-    }
+    CerrarChequeoAlConfirmar(mensajeExito, onLimpiarMensajes) { vehiculoChequeoModal = null }
 
     CobreBackground(applySystemBarsInsets = mostrarTopBar) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -226,20 +223,23 @@ fun VehiculosScreen(
     }
 
     vehiculoChequeoModal?.let { vehiculo ->
-        val chequeoActivo = chequeoEnRuta(vehiculo.id)
+        // Mantener el tipo de operación aunque el sondeo ya vea el movimiento guardado.
+        val chequeoActivo = remember(vehiculo.id) { chequeoEnRuta(vehiculo.id) }
         ModalChequeoVehiculo(
             vehiculo = vehiculo,
             chequeo = chequeoActivo,
             conductores = conductores,
             administradorNombre = administrador.nombre,
-            onDismiss = { vehiculoChequeoModal = null },
+            guardando = operacionEnCurso,
+            movimientoConfirmado = tieneFotosPendientes(vehiculo.id),
+            errorServidor = error,
+            onDismiss = { onDescartarReintentos(); vehiculoChequeoModal = null },
             onConfirmar = { repartidorId, responsable, km, estado, fotos, obs ->
                 if (chequeoActivo != null && chequeoActivo.estaEnRuta) {
                     onRegistrarEntradaDetallada(vehiculo.id, km, estado, fotos, obs)
                 } else {
                     onRegistrarSalidaDetallada(vehiculo.id, repartidorId, responsable, km, estado, fotos, obs)
                 }
-                vehiculoChequeoModal = null
             },
         )
     }
@@ -250,6 +250,17 @@ fun VehiculosScreen(
             historial = historialVehiculo(vehiculo.id),
             onDismiss = { vehiculoHistorialModal = null },
         )
+    }
+}
+
+@Composable
+private fun CerrarChequeoAlConfirmar(mensaje: String?, limpiar: () -> Unit, cerrar: () -> Unit) {
+    LaunchedEffect(mensaje) {
+        if (mensaje != null) {
+            cerrar()
+            delay(3500)
+            limpiar()
+        }
     }
 }
 
@@ -1399,6 +1410,9 @@ private fun ModalChequeoVehiculo(
     chequeo: ChequeoVehiculo?,
     conductores: List<ConductorFlota>,
     administradorNombre: String,
+    guardando: Boolean,
+    movimientoConfirmado: Boolean,
+    errorServidor: String?,
     onDismiss: () -> Unit,
     onConfirmar: (
         repartidorId: String?,
@@ -1418,10 +1432,11 @@ private fun ModalChequeoVehiculo(
     }
     val kmMinimo = if (esEntrada) chequeo.kmSalida ?: vehiculo.kilometrajeActual else vehiculo.kilometrajeActual
 
-    CobreBackHandler(enabled = true, onBack = onDismiss)
+    val cerrar = { if (!guardando) onDismiss() }
+    CobreBackHandler(enabled = true, onBack = cerrar)
 
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = cerrar,
         containerColor = if (isDark) DarkSurface1 else Color(0xFFFBF8F5),
     ) {
         Column(
@@ -1449,7 +1464,7 @@ private fun ModalChequeoVehiculo(
                         color = brandMutedColor(),
                     )
                 }
-                IconButton(onClick = onDismiss) {
+                IconButton(onClick = cerrar, enabled = !guardando) {
                     Icon(CobreIcons.Close, contentDescription = "Cerrar", tint = brandMutedColor())
                 }
             }
@@ -1459,7 +1474,10 @@ private fun ModalChequeoVehiculo(
                 kmMinimo = kmMinimo,
                 conductores = conductores,
                 responsablePorDefecto = chequeo?.responsable ?: administradorNombre,
-                onDismiss = onDismiss,
+                guardando = guardando,
+                movimientoConfirmado = movimientoConfirmado,
+                errorServidor = errorServidor,
+                onDismiss = cerrar,
                 onConfirmar = onConfirmar,
             )
             Spacer(Modifier.height(16.dp))
@@ -1475,6 +1493,9 @@ private fun ChequeoForm(
     kmMinimo: Int,
     conductores: List<ConductorFlota>,
     responsablePorDefecto: String,
+    guardando: Boolean,
+    movimientoConfirmado: Boolean,
+    errorServidor: String?,
     onDismiss: () -> Unit,
     onConfirmar: (
         repartidorId: String?,
@@ -1501,14 +1522,16 @@ private fun ChequeoForm(
     val km = kmTexto.toIntOrNull()
     val errorKm = diagnosticarKilometrajeChequeo(kmTexto, kmMinimo)
     val bloqueadoPorNoApto = !esEntrada && estadoSeleccionado == EstadoCondicionVehiculo.NO_APTO
-    val habilitado = km != null && km >= kmMinimo && !bloqueadoPorNoApto
+    val habilitado = km != null && km >= kmMinimo && !bloqueadoPorNoApto && !guardando
+    val editarDatos = !guardando && !movimientoConfirmado
 
     Column(modifier = Modifier.padding(top = 12.dp)) {
+        EstadoGuardadoChequeo(guardando, movimientoConfirmado, errorServidor, accent)
         if (!esEntrada) {
             SelectorConductorFlota(
                 conductores = conductoresHabilitados,
                 seleccionado = conductorSeleccionado,
-                onSeleccionar = { conductorSeleccionado = it },
+                onSeleccionar = { if (editarDatos) conductorSeleccionado = it },
             )
             Spacer(Modifier.height(12.dp))
         }
@@ -1516,12 +1539,13 @@ private fun ChequeoForm(
         SelectorCondicionVehiculo(
             esEntrada = esEntrada,
             seleccionado = estadoSeleccionado,
-            onSeleccionar = { estadoSeleccionado = it },
+            onSeleccionar = { if (editarDatos) estadoSeleccionado = it },
         )
         Spacer(Modifier.height(12.dp))
 
         OutlinedTextField(
             value = kmTexto,
+            enabled = editarDatos,
             onValueChange = { kmTexto = it.filter(Char::isDigit) },
             label = { Text(if (esEntrada) "Kilometraje de retorno" else "Kilometraje de salida") },
             placeholder = { Text("Mínimo $kmMinimo") },
@@ -1536,19 +1560,10 @@ private fun ChequeoForm(
         )
 
         Spacer(Modifier.height(12.dp))
-        SelectorFotos(accent, fotos, haptic)
+        SelectorFotos(accent, fotos, haptic, enabled = !guardando)
 
         Spacer(Modifier.height(12.dp))
-        OutlinedTextField(
-            value = observaciones,
-            onValueChange = { observaciones = it },
-            label = { Text("Observaciones (opcional)") },
-            placeholder = { Text("Ej. Rayón leve en parachoques trasero") },
-            minLines = 2,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
-            colors = cobreFieldColors(),
-        )
+        ObservacionesChequeo(observaciones, editarDatos) { observaciones = it }
 
         Spacer(Modifier.height(14.dp))
         Row(
@@ -1588,6 +1603,24 @@ private fun ChequeoForm(
             )
         }
     }
+}
+
+@Composable
+private fun EstadoGuardadoChequeo(guardando: Boolean, confirmado: Boolean, error: String?, accent: Color) {
+    if (guardando) Text("Guardando movimiento y fotografías…", color = brandMutedColor())
+    if (confirmado) Text("El movimiento ya está guardado. Reintenta las fotografías pendientes.", color = accent)
+    if (error != null) Text(error, color = MaterialTheme.colorScheme.error)
+}
+
+@Composable
+private fun ObservacionesChequeo(valor: String, enabled: Boolean, cambiar: (String) -> Unit) {
+    OutlinedTextField(
+        value = valor, enabled = enabled, onValueChange = cambiar,
+        label = { Text("Observaciones (opcional)") },
+        placeholder = { Text("Ej. Rayón leve en parachoques trasero") },
+        minLines = 2, modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp), colors = cobreFieldColors(),
+    )
 }
 
 @Composable
@@ -1698,7 +1731,7 @@ private fun SelectorCondicionVehiculo(
 }
 
 @Composable
-private fun SelectorFotos(accent: Color, fotos: MutableState<List<FotoChequeo>>, haptic: HapticFeedback) {
+private fun SelectorFotos(accent: Color, fotos: MutableState<List<FotoChequeo>>, haptic: HapticFeedback, enabled: Boolean) {
     val abrirCamara = rememberCapturadorFoto { uriCapturada ->
         val orden = fotos.value.size + 1
         val etiqueta = ETIQUETAS_FOTOS.getOrElse(orden - 1) { "Evidencia $orden" }
@@ -1720,6 +1753,7 @@ private fun SelectorFotos(accent: Color, fotos: MutableState<List<FotoChequeo>>,
             color = brandHeadingColor(),
         )
         TextButton(
+            enabled = enabled && fotos.value.size < 20,
             onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 abrirCamara()
@@ -1737,7 +1771,7 @@ private fun SelectorFotos(accent: Color, fotos: MutableState<List<FotoChequeo>>,
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
                     .background(accent.copy(alpha = 0.14f))
-                    .clickable { fotos.value = fotos.value.filterNot { it.id == foto.id } }
+                    .clickable(enabled = enabled) { fotos.value = fotos.value.filterNot { it.id == foto.id } }
                     .padding(horizontal = 8.dp, vertical = 6.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
@@ -1765,7 +1799,7 @@ private fun SelectorFotos(accent: Color, fotos: MutableState<List<FotoChequeo>>,
                     .pressableScale(interaction)
                     .clip(RoundedCornerShape(12.dp))
                     .background(Brand500.copy(alpha = 0.10f))
-                    .clickable(interactionSource = interaction, indication = null) {
+                    .clickable(enabled = enabled && fotos.value.size < 20, interactionSource = interaction, indication = null) {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         abrirCamara()
                     },

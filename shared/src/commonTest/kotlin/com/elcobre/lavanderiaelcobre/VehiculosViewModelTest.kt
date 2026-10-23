@@ -393,6 +393,72 @@ class VehiculosViewModelTest {
     }
 
     @Test
+    fun reintentarFotosDeSalidaConservaElMovimientoAunqueElSondeoYaLoVeaActivo() = runTest {
+        val base = FakeVehiculosRepository()
+        val intentos = mutableListOf<SalidaFlotaInput>()
+        var salidaId = ""
+        val repo = object : VehiculosRepository by base {
+            override suspend fun registrarSalida(input: SalidaFlotaInput): String {
+                intentos.add(input)
+                if (intentos.size == 1) {
+                    salidaId = base.registrarSalida(input)
+                    throw OperacionComandaException("La salida ya se guardó. Hay fotografías pendientes.")
+                }
+                return salidaId
+            }
+        }
+        val vm = VehiculosViewModel(repo, backgroundScope)
+        val id = base.vehiculos[1].id
+        vm.cambiarSesion(true)
+        vm.refrescarFlota()
+        testScheduler.runCurrent()
+        vm.registrarSalidaVehiculo(id, 31_500, emptyList(), "Original", "Camila", "cond-2")
+        testScheduler.runCurrent()
+        assertTrue(vm.tieneFotosPendientes(id))
+        assertNull(vm.mensajeExito)
+        vm.refrescarFlota()
+        testScheduler.runCurrent()
+        assertNotNull(vm.chequeoEnRuta(id))
+        vm.registrarSalidaVehiculo(id, 99_000, emptyList(), "Cambio", "Camila", "cond-2")
+        testScheduler.runCurrent()
+        assertEquals(2, intentos.size)
+        assertEquals(intentos[0], intentos[1])
+        assertFalse(vm.tieneFotosPendientes(id))
+        assertEquals(1, vm.historialVehiculo(id).size)
+    }
+
+    @Test
+    fun reintentarFotosDeRetornoFuncionaAunqueLaSalidaYaEsteCerrada() = runTest {
+        val base = FakeVehiculosRepository()
+        val intentos = mutableListOf<RetornoFlotaInput>()
+        val repo = object : VehiculosRepository by base {
+            override suspend fun registrarRetorno(input: RetornoFlotaInput) {
+                intentos.add(input)
+                if (intentos.size == 1) {
+                    base.registrarRetorno(input)
+                    throw OperacionComandaException("El retorno ya se guardó. Hay fotografías pendientes.")
+                }
+            }
+        }
+        val vm = VehiculosViewModel(repo, backgroundScope)
+        val id = base.vehiculos[0].id
+        vm.cambiarSesion(true)
+        vm.refrescarFlota()
+        testScheduler.runCurrent()
+        vm.registrarEntradaVehiculo(id, 58_400, emptyList(), "Original")
+        testScheduler.runCurrent()
+        vm.refrescarFlota()
+        testScheduler.runCurrent()
+        assertNull(vm.chequeoEnRuta(id))
+        assertTrue(vm.tieneFotosPendientes(id))
+        vm.registrarEntradaVehiculo(id, 99_000, emptyList(), "Cambio")
+        testScheduler.runCurrent()
+        assertEquals(intentos[0], intentos[1])
+        assertFalse(vm.tieneFotosPendientes(id))
+        assertNotNull(vm.mensajeExito)
+    }
+
+    @Test
     fun errorConservaDatosYRespuestasTardiasDeOtraSesionSeDescartan() = runTest {
         val repo = FakeVehiculosRepository()
         val vm = VehiculosViewModel(repository = repo, scopeOverride = backgroundScope)
