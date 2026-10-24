@@ -1,0 +1,23 @@
+name: Android quality
+on:
+  push:
+    branches: [test]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+      - name: Configure demo Firebase resources for compilation only
+        run: cp config/google-services.ci.json androidApp/google-services.json
+      - name: Compile, test and analyze Android
+        run: bash gradlew :shared:testAndroidHostTest :androidApp:assembleDebug :androidApp:lintDebug detekt --no-configuration-cache --console=plain
