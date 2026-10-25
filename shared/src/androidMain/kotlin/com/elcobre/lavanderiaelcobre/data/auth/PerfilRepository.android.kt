@@ -39,19 +39,19 @@ actual class PerfilRepository actual constructor() {
     } catch (error: CancellationException) {
         throw error
     } catch (error: StatusException) {
-        Log.e(PERFIL_TAG, "No fue posible consultar GetMiPerfil", error)
+        Log.e(PERFIL_TAG, "No fue posible consultar GetMiPerfil: ${error::class.simpleName}")
         PerfilResultado.Error("No se pudo cargar tu perfil. Verifica tu conexión e intenta nuevamente.")
     } catch (error: StatusRuntimeException) {
-        Log.e(PERFIL_TAG, "No fue posible consultar GetMiPerfil", error)
+        Log.e(PERFIL_TAG, "No fue posible consultar GetMiPerfil: ${error::class.simpleName}")
         PerfilResultado.Error("No se pudo cargar tu perfil. Verifica tu conexión e intenta nuevamente.")
     } catch (error: DataConnectOperationException) {
-        Log.e(PERFIL_TAG, "GetMiPerfil fue rechazado por Data Connect", error)
+        Log.e(PERFIL_TAG, "GetMiPerfil fue rechazado por Data Connect: ${error::class.simpleName}")
         PerfilResultado.Error(mensajePerfil(error))
     } catch (error: DataConnectException) {
-        Log.e(PERFIL_TAG, "No fue posible consultar GetMiPerfil", error)
+        Log.e(PERFIL_TAG, "No fue posible consultar GetMiPerfil: ${error::class.simpleName}")
         PerfilResultado.Error(mensajePerfil(error))
     } catch (error: IllegalStateException) {
-        Log.e(PERFIL_TAG, "Firebase Data Connect no está inicializado correctamente", error)
+        Log.e(PERFIL_TAG, "Firebase Data Connect no está inicializado correctamente: ${error::class.simpleName}")
         PerfilResultado.Error("No se pudo iniciar el servicio de perfiles. Reinicia la app e intenta nuevamente.")
     }
 }

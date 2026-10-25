@@ -575,6 +575,7 @@ private fun TurnoDetectadoBanner(turno: TurnoPlanta) {
 
 @Composable
 private fun LoginFooter() {
+    com.elcobre.lavanderiaelcobre.ui.components.AvisoPrivacidad()
     Text(
         "Lavandería El Cobre · Gestión interna",
         style = MaterialTheme.typography.labelSmall,

@@ -41,6 +41,8 @@ public interface RegistrarSolicitudContactoMutation :
 
     val limiteId: String,
 
+    val versionPrivacidad: String,
+
   ) {
 
 
@@ -74,7 +76,7 @@ public interface RegistrarSolicitudContactoMutation :
 
 public fun RegistrarSolicitudContactoMutation.ref(
 
-    id: java.util.UUID,nombre: String,email: String,telefono: String,servicio: String,mensaje: String,hashContenido: String,limiteId: String,
+    id: java.util.UUID,nombre: String,email: String,telefono: String,servicio: String,mensaje: String,hashContenido: String,limiteId: String,versionPrivacidad: String,
 
 
 
@@ -85,7 +87,7 @@ public fun RegistrarSolicitudContactoMutation.ref(
   ref(
 
       RegistrarSolicitudContactoMutation.Variables(
-        id=id,nombre=nombre,email=email,telefono=telefono,servicio=servicio,mensaje=mensaje,hashContenido=hashContenido,limiteId=limiteId,
+        id=id,nombre=nombre,email=email,telefono=telefono,servicio=servicio,mensaje=mensaje,hashContenido=hashContenido,limiteId=limiteId,versionPrivacidad=versionPrivacidad,
 
       )
 
@@ -95,7 +97,7 @@ public suspend fun RegistrarSolicitudContactoMutation.execute(
 
 
 
-      id: java.util.UUID,nombre: String,email: String,telefono: String,servicio: String,mensaje: String,hashContenido: String,limiteId: String,
+      id: java.util.UUID,nombre: String,email: String,telefono: String,servicio: String,mensaje: String,hashContenido: String,limiteId: String,versionPrivacidad: String,
 
 
 
@@ -105,7 +107,7 @@ public suspend fun RegistrarSolicitudContactoMutation.execute(
   > =
   ref(
 
-      id=id,nombre=nombre,email=email,telefono=telefono,servicio=servicio,mensaje=mensaje,hashContenido=hashContenido,limiteId=limiteId,
+      id=id,nombre=nombre,email=email,telefono=telefono,servicio=servicio,mensaje=mensaje,hashContenido=hashContenido,limiteId=limiteId,versionPrivacidad=versionPrivacidad,
 
 
   ).execute()

@@ -90,6 +90,7 @@ fun ConfiguracionScreen(
             Spacer(Modifier.height(20.dp))
 
             CuentaCard(operario)
+            com.elcobre.lavanderiaelcobre.ui.components.AvisoPrivacidad()
             Spacer(Modifier.height(16.dp))
             AparienciaCard(modoTema = modoTema, onCambiarTema = onCambiarTema)
             Spacer(Modifier.height(16.dp))

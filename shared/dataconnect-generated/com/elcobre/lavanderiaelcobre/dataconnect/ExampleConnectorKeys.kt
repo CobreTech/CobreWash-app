@@ -14,6 +14,16 @@ package com.elcobre.lavanderiaelcobre.dataconnect
 
 
   @kotlinx.serialization.Serializable
+  public data class ActuacionDerechoKey(
+
+    val id: @kotlinx.serialization.Serializable(with = com.google.firebase.dataconnect.serializers.UUIDSerializer::class) java.util.UUID,
+
+  ) {
+
+
+  }
+
+  @kotlinx.serialization.Serializable
   public data class AvisoKey(
 
     val id: @kotlinx.serialization.Serializable(with = com.google.firebase.dataconnect.serializers.UUIDSerializer::class) java.util.UUID,
@@ -189,6 +199,16 @@ package com.elcobre.lavanderiaelcobre.dataconnect
 
   @kotlinx.serialization.Serializable
   public data class SolicitudContactoKey(
+
+    val id: @kotlinx.serialization.Serializable(with = com.google.firebase.dataconnect.serializers.UUIDSerializer::class) java.util.UUID,
+
+  ) {
+
+
+  }
+
+  @kotlinx.serialization.Serializable
+  public data class SolicitudDerechoKey(
 
     val id: @kotlinx.serialization.Serializable(with = com.google.firebase.dataconnect.serializers.UUIDSerializer::class) java.util.UUID,
 

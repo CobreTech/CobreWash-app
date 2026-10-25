@@ -41,14 +41,15 @@ actual class AuthRepository actual constructor() {
         Log.w(AUTH_TAG, "Firebase Auth rechazó el inicio de sesión: ${error::class.simpleName}")
         AuthResultado.Error(mapAuthError(error))
     } catch (error: IllegalArgumentException) {
-        Log.w(AUTH_TAG, "Las credenciales no tienen un formato válido", error)
+        Log.w(AUTH_TAG, "Las credenciales no tienen un formato válido: ${error::class.simpleName}")
         AuthResultado.Error("El correo electrónico no es válido.")
     } catch (error: IllegalStateException) {
-        Log.e(AUTH_TAG, "Firebase Auth no está inicializado correctamente", error)
+        Log.e(AUTH_TAG, "Firebase Auth no está inicializado correctamente: ${error::class.simpleName}")
         AuthResultado.Error(mapAuthError(error))
     }
 
     actual fun cerrarSesion() {
         auth.signOut()
+        com.elcobre.lavanderiaelcobre.data.eliminarCapturasAlSalir()
     }
 }

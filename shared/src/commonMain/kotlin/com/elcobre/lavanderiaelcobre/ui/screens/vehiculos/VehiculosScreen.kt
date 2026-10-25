@@ -1561,6 +1561,11 @@ private fun ChequeoForm(
 
         Spacer(Modifier.height(12.dp))
         SelectorFotos(accent, fotos, haptic, enabled = !guardando)
+        Text(
+            "Fotografía solo el vehículo. Evita rostros, documentos y objetos personales ajenos a la inspección.",
+            style = MaterialTheme.typography.bodySmall,
+            color = brandMutedColor(),
+        )
 
         Spacer(Modifier.height(12.dp))
         ObservacionesChequeo(observaciones, editarDatos) { observaciones = it }

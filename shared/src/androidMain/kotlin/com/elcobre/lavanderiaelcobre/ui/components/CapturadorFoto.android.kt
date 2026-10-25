@@ -51,7 +51,10 @@ actual fun rememberCapturadorFoto(onFotoCapturada: (uri: String) -> Unit): () ->
         if (ok && archivo != null) scope.launch {
             val valido = withContext(Dispatchers.IO) { prepararCaptura(archivo) }
             if (valido) callback(archivo.absolutePath)
-            else avisar(context, "No se pudo preparar la fotografía. Captúrala nuevamente.")
+            else {
+                archivo.delete()
+                avisar(context, "No se pudo preparar la fotografía. Captúrala nuevamente.")
+            }
         } else archivo?.delete()
     }
     val abrirCamara = {

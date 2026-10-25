@@ -43,11 +43,15 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
 
     public val autoAsignarComandaOperario: AutoAsignarComandaOperarioMutation
 
+    public val autorizarGestionPrivacidad: AutorizarGestionPrivacidadQuery
+
     public val completarEtapaComanda: CompletarEtapaComandaMutation
 
     public val configurarEtapaProduccion: ConfigurarEtapaProduccionMutation
 
     public val configurarLimitesEtapas: ConfigurarLimitesEtapasMutation
+
+    public val contarLimitesContactoVencidos: ContarLimitesContactoVencidosQuery
 
     public val crearAviso: CrearAvisoMutation
 
@@ -81,6 +85,8 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
 
     public val entregarComanda: EntregarComandaMutation
 
+    public val gestionarSolicitudDerecho: GestionarSolicitudDerechoMutation
+
     public val getAvisosAdministracion: GetAvisosAdministracionQuery
 
     public val getAvisosParaEquipo: GetAvisosParaEquipoQuery
@@ -100,6 +106,8 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
     public val getComandasPaginadas: GetComandasPaginadasQuery
 
     public val getComandasParaAlertas: GetComandasParaAlertasQuery
+
+    public val getComprobanteDerecho: GetComprobanteDerechoQuery
 
     public val getDetalleReporteCuentas: GetDetalleReporteCuentasQuery
 
@@ -165,9 +173,15 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
 
     public val iniciarSalidaVehiculo: IniciarSalidaVehiculoMutation
 
+    public val listarSolicitudesDerecho: ListarSolicitudesDerechoQuery
+
     public val prepararLimiteContacto: PrepararLimiteContactoMutation
 
+    public val purgarLimitesContacto: PurgarLimitesContactoMutation
+
     public val reasignarOperarioEtapa: ReasignarOperarioEtapaMutation
+
+    public val recibirSolicitudDerecho: RecibirSolicitudDerechoMutation
 
     public val registrarEntradaInventario: RegistrarEntradaInventarioMutation
 
@@ -290,6 +304,10 @@ private class ExampleConnectorImpl(
       AutoAsignarComandaOperarioMutationImpl(this)
     }
 
+    override val autorizarGestionPrivacidad by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      AutorizarGestionPrivacidadQueryImpl(this)
+    }
+
     override val completarEtapaComanda by lazy(LazyThreadSafetyMode.PUBLICATION) {
       CompletarEtapaComandaMutationImpl(this)
     }
@@ -300,6 +318,10 @@ private class ExampleConnectorImpl(
 
     override val configurarLimitesEtapas by lazy(LazyThreadSafetyMode.PUBLICATION) {
       ConfigurarLimitesEtapasMutationImpl(this)
+    }
+
+    override val contarLimitesContactoVencidos by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      ContarLimitesContactoVencidosQueryImpl(this)
     }
 
     override val crearAviso by lazy(LazyThreadSafetyMode.PUBLICATION) {
@@ -366,6 +388,10 @@ private class ExampleConnectorImpl(
       EntregarComandaMutationImpl(this)
     }
 
+    override val gestionarSolicitudDerecho by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GestionarSolicitudDerechoMutationImpl(this)
+    }
+
     override val getAvisosAdministracion by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetAvisosAdministracionQueryImpl(this)
     }
@@ -404,6 +430,10 @@ private class ExampleConnectorImpl(
 
     override val getComandasParaAlertas by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetComandasParaAlertasQueryImpl(this)
+    }
+
+    override val getComprobanteDerecho by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GetComprobanteDerechoQueryImpl(this)
     }
 
     override val getDetalleReporteCuentas by lazy(LazyThreadSafetyMode.PUBLICATION) {
@@ -534,12 +564,24 @@ private class ExampleConnectorImpl(
       IniciarSalidaVehiculoMutationImpl(this)
     }
 
+    override val listarSolicitudesDerecho by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      ListarSolicitudesDerechoQueryImpl(this)
+    }
+
     override val prepararLimiteContacto by lazy(LazyThreadSafetyMode.PUBLICATION) {
       PrepararLimiteContactoMutationImpl(this)
     }
 
+    override val purgarLimitesContacto by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      PurgarLimitesContactoMutationImpl(this)
+    }
+
     override val reasignarOperarioEtapa by lazy(LazyThreadSafetyMode.PUBLICATION) {
       ReasignarOperarioEtapaMutationImpl(this)
+    }
+
+    override val recibirSolicitudDerecho by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      RecibirSolicitudDerechoMutationImpl(this)
     }
 
     override val registrarEntradaInventario by lazy(LazyThreadSafetyMode.PUBLICATION) {
@@ -640,9 +682,12 @@ private class ExampleConnectorImpl(
         editarVehiculoFlota,
         eliminarDetallesComanda,
         entregarComanda,
+        gestionarSolicitudDerecho,
         iniciarSalidaVehiculo,
         prepararLimiteContacto,
+        purgarLimitesContacto,
         reasignarOperarioEtapa,
+        recibirSolicitudDerecho,
         registrarEntradaInventario,
         registrarEvidenciaGuardada,
         registrarIncidenciaComanda,
@@ -664,7 +709,9 @@ private class ExampleConnectorImpl(
   @com.google.firebase.dataconnect.ExperimentalFirebaseDataConnect
   override fun queries(): List<com.google.firebase.dataconnect.generated.GeneratedQuery<ExampleConnector, *, *>> =
     listOf(
-      diagnosticoComandas,
+      autorizarGestionPrivacidad,
+        contarLimitesContactoVencidos,
+        diagnosticoComandas,
         getAvisosAdministracion,
         getAvisosParaEquipo,
         getCatalogosComanda,
@@ -675,6 +722,7 @@ private class ExampleConnectorImpl(
         getComandasActivasCount,
         getComandasPaginadas,
         getComandasParaAlertas,
+        getComprobanteDerecho,
         getDetalleReporteCuentas,
         getDetalleReporteServicios,
         getEtapasProduccion,
@@ -706,6 +754,7 @@ private class ExampleConnectorImpl(
         getSolicitudesContacto,
         getUsuarios,
         getVehiculos,
+        listarSolicitudesDerecho,
 
     )
 
@@ -1021,6 +1070,21 @@ private class AutoAsignarComandaOperarioMutationImpl(
   )
 
 
+private class AutorizarGestionPrivacidadQueryImpl(
+  connector: ExampleConnector
+):
+  AutorizarGestionPrivacidadQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      Unit,
+      Unit
+  >(
+    connector,
+    AutorizarGestionPrivacidadQuery.Companion.operationName,
+    AutorizarGestionPrivacidadQuery.Companion.dataDeserializer,
+    AutorizarGestionPrivacidadQuery.Companion.variablesSerializer,
+  )
+
+
 private class CompletarEtapaComandaMutationImpl(
   connector: ExampleConnector
 ):
@@ -1063,6 +1127,21 @@ private class ConfigurarLimitesEtapasMutationImpl(
     ConfigurarLimitesEtapasMutation.Companion.operationName,
     ConfigurarLimitesEtapasMutation.Companion.dataDeserializer,
     ConfigurarLimitesEtapasMutation.Companion.variablesSerializer,
+  )
+
+
+private class ContarLimitesContactoVencidosQueryImpl(
+  connector: ExampleConnector
+):
+  ContarLimitesContactoVencidosQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      ContarLimitesContactoVencidosQuery.Data,
+      ContarLimitesContactoVencidosQuery.Variables
+  >(
+    connector,
+    ContarLimitesContactoVencidosQuery.Companion.operationName,
+    ContarLimitesContactoVencidosQuery.Companion.dataDeserializer,
+    ContarLimitesContactoVencidosQuery.Companion.variablesSerializer,
   )
 
 
@@ -1306,6 +1385,21 @@ private class EntregarComandaMutationImpl(
   )
 
 
+private class GestionarSolicitudDerechoMutationImpl(
+  connector: ExampleConnector
+):
+  GestionarSolicitudDerechoMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      GestionarSolicitudDerechoMutation.Data,
+      GestionarSolicitudDerechoMutation.Variables
+  >(
+    connector,
+    GestionarSolicitudDerechoMutation.Companion.operationName,
+    GestionarSolicitudDerechoMutation.Companion.dataDeserializer,
+    GestionarSolicitudDerechoMutation.Companion.variablesSerializer,
+  )
+
+
 private class GetAvisosAdministracionQueryImpl(
   connector: ExampleConnector
 ):
@@ -1453,6 +1547,21 @@ private class GetComandasParaAlertasQueryImpl(
     GetComandasParaAlertasQuery.Companion.operationName,
     GetComandasParaAlertasQuery.Companion.dataDeserializer,
     GetComandasParaAlertasQuery.Companion.variablesSerializer,
+  )
+
+
+private class GetComprobanteDerechoQueryImpl(
+  connector: ExampleConnector
+):
+  GetComprobanteDerechoQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      GetComprobanteDerechoQuery.Data,
+      GetComprobanteDerechoQuery.Variables
+  >(
+    connector,
+    GetComprobanteDerechoQuery.Companion.operationName,
+    GetComprobanteDerechoQuery.Companion.dataDeserializer,
+    GetComprobanteDerechoQuery.Companion.variablesSerializer,
   )
 
 
@@ -1936,6 +2045,21 @@ private class IniciarSalidaVehiculoMutationImpl(
   )
 
 
+private class ListarSolicitudesDerechoQueryImpl(
+  connector: ExampleConnector
+):
+  ListarSolicitudesDerechoQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      ListarSolicitudesDerechoQuery.Data,
+      ListarSolicitudesDerechoQuery.Variables
+  >(
+    connector,
+    ListarSolicitudesDerechoQuery.Companion.operationName,
+    ListarSolicitudesDerechoQuery.Companion.dataDeserializer,
+    ListarSolicitudesDerechoQuery.Companion.variablesSerializer,
+  )
+
+
 private class PrepararLimiteContactoMutationImpl(
   connector: ExampleConnector
 ):
@@ -1951,6 +2075,21 @@ private class PrepararLimiteContactoMutationImpl(
   )
 
 
+private class PurgarLimitesContactoMutationImpl(
+  connector: ExampleConnector
+):
+  PurgarLimitesContactoMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      PurgarLimitesContactoMutation.Data,
+      PurgarLimitesContactoMutation.Variables
+  >(
+    connector,
+    PurgarLimitesContactoMutation.Companion.operationName,
+    PurgarLimitesContactoMutation.Companion.dataDeserializer,
+    PurgarLimitesContactoMutation.Companion.variablesSerializer,
+  )
+
+
 private class ReasignarOperarioEtapaMutationImpl(
   connector: ExampleConnector
 ):
@@ -1963,6 +2102,21 @@ private class ReasignarOperarioEtapaMutationImpl(
     ReasignarOperarioEtapaMutation.Companion.operationName,
     ReasignarOperarioEtapaMutation.Companion.dataDeserializer,
     ReasignarOperarioEtapaMutation.Companion.variablesSerializer,
+  )
+
+
+private class RecibirSolicitudDerechoMutationImpl(
+  connector: ExampleConnector
+):
+  RecibirSolicitudDerechoMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      RecibirSolicitudDerechoMutation.Data,
+      RecibirSolicitudDerechoMutation.Variables
+  >(
+    connector,
+    RecibirSolicitudDerechoMutation.Companion.operationName,
+    RecibirSolicitudDerechoMutation.Companion.dataDeserializer,
+    RecibirSolicitudDerechoMutation.Companion.variablesSerializer,
   )
 
 

@@ -176,6 +176,8 @@ internal actual suspend fun editarVehiculoFirebase(input: EditarVehiculoInput): 
 private suspend fun adjuntarFotosInspeccion(inspeccionId: UUID, fotos: List<FotoChequeo>) {
     require(fotos.size <= MAX_FOTOS_INSPECCION) { "Máximo 20 fotografías por inspección." }
     for ((indice, foto) in fotos.withIndex()) subirFotoInspeccion(inspeccionId.toString(), foto, indice + 1)
+    // Conservar todo el lote si falla una foto permite reintentar sin duplicar el movimiento.
+    eliminarCapturasConfirmadas(fotos.map { it.uri })
 }
 
 internal actual suspend fun registrarSalidaFirebase(input: SalidaFlotaInput): String = solicitud {

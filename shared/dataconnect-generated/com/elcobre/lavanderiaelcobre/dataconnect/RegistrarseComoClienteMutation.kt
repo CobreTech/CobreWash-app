@@ -41,11 +41,14 @@ public interface RegistrarseComoClienteMutation :
 
     val tipoCliente: TipoCliente,
 
+    val versionPrivacidad: String,
+
   ) {
 
 
 
       @kotlin.DslMarker public annotation class BuilderDsl
+
 
       @BuilderDsl
       public interface Builder {
@@ -57,13 +60,15 @@ public interface RegistrarseComoClienteMutation :
         public var email: String
         public var direccion: String?
         public var tipoCliente: TipoCliente
+        public var versionPrivacidad: String
 
       }
 
       public companion object {
+
         @Suppress("NAME_SHADOWING")
         public fun build(
-          rut: String,nombre: String,apellido: String,email: String,tipoCliente: TipoCliente,
+          rut: String,nombre: String,apellido: String,email: String,tipoCliente: TipoCliente,versionPrivacidad: String,
           block_: Builder.() -> Unit
         ): Variables {
           var crearFicha: com.google.firebase.dataconnect.OptionalVariable<Boolean> =
@@ -77,6 +82,7 @@ public interface RegistrarseComoClienteMutation :
             var direccion: com.google.firebase.dataconnect.OptionalVariable<String?> =
                 com.google.firebase.dataconnect.OptionalVariable.Undefined
             var tipoCliente= tipoCliente
+            var versionPrivacidad= versionPrivacidad
 
 
           return object : Builder {
@@ -112,11 +118,15 @@ public interface RegistrarseComoClienteMutation :
               get() = throw UnsupportedOperationException("getting builder values is not supported")
               set(value_) { tipoCliente = value_ }
 
+            override var versionPrivacidad: String
+              get() = throw UnsupportedOperationException("getting builder values is not supported")
+              set(value_) { versionPrivacidad = value_ }
+
 
           }.apply(block_)
           .let {
             Variables(
-              crearFicha=crearFicha,rut=rut,nombre=nombre,apellido=apellido,telefono=telefono,email=email,direccion=direccion,tipoCliente=tipoCliente,
+              crearFicha=crearFicha,rut=rut,nombre=nombre,apellido=apellido,telefono=telefono,email=email,direccion=direccion,tipoCliente=tipoCliente,versionPrivacidad=versionPrivacidad,
             )
           }
         }
@@ -152,7 +162,7 @@ public interface RegistrarseComoClienteMutation :
 
 public fun RegistrarseComoClienteMutation.ref(
 
-    rut: String,nombre: String,apellido: String,email: String,tipoCliente: TipoCliente,
+    rut: String,nombre: String,apellido: String,email: String,tipoCliente: TipoCliente,versionPrivacidad: String,
 
 
     block_: RegistrarseComoClienteMutation.Variables.Builder.() -> Unit = {}
@@ -164,7 +174,7 @@ public fun RegistrarseComoClienteMutation.ref(
   ref(
 
       RegistrarseComoClienteMutation.Variables.build(
-        rut=rut,nombre=nombre,apellido=apellido,email=email,tipoCliente=tipoCliente,
+        rut=rut,nombre=nombre,apellido=apellido,email=email,tipoCliente=tipoCliente,versionPrivacidad=versionPrivacidad,
 
     block_
       )
@@ -175,7 +185,7 @@ public suspend fun RegistrarseComoClienteMutation.execute(
 
 
 
-      rut: String,nombre: String,apellido: String,email: String,tipoCliente: TipoCliente,
+      rut: String,nombre: String,apellido: String,email: String,tipoCliente: TipoCliente,versionPrivacidad: String,
 
 
     block_: RegistrarseComoClienteMutation.Variables.Builder.() -> Unit = {}
@@ -186,7 +196,7 @@ public suspend fun RegistrarseComoClienteMutation.execute(
   > =
   ref(
 
-      rut=rut,nombre=nombre,apellido=apellido,email=email,tipoCliente=tipoCliente,
+      rut=rut,nombre=nombre,apellido=apellido,email=email,tipoCliente=tipoCliente,versionPrivacidad=versionPrivacidad,
 
     block_
 

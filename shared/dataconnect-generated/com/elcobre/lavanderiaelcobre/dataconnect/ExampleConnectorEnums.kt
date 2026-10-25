@@ -30,6 +30,37 @@ package com.elcobre.lavanderiaelcobre.dataconnect
 
 
 
+  public enum class DerechoPrivacidad {
+  ACCESO,
+  RECTIFICACION,
+  SUPRESION,
+  OPOSICION,
+  BLOQUEO,
+  PORTABILIDAD,
+  REVOCACION;
+
+
+    public object EnumValueSerializer :
+      com.elcobre.lavanderiaelcobre.dataconnect.EnumValueSerializer<DerechoPrivacidad>(DerechoPrivacidad.entries)
+
+  }
+
+
+
+  public enum class EstadoDerecho {
+  RECIBIDA,
+  VERIFICACION,
+  EN_GESTION,
+  RESPONDIDA;
+
+
+    public object EnumValueSerializer :
+      com.elcobre.lavanderiaelcobre.dataconnect.EnumValueSerializer<EstadoDerecho>(EstadoDerecho.entries)
+
+  }
+
+
+
   public enum class EstadoVehiculo {
   APTO,
   CON_OBSERVACIONES,
