@@ -95,6 +95,7 @@ import com.elcobre.lavanderiaelcobre.ui.components.brandMutedColor
 import com.elcobre.lavanderiaelcobre.ui.components.cobreFieldColors
 import com.elcobre.lavanderiaelcobre.ui.components.pressableScale
 import com.elcobre.lavanderiaelcobre.ui.components.rememberCapturadorFoto
+import com.elcobre.lavanderiaelcobre.ui.components.RecordatorioPrivacidadFotos
 import com.elcobre.lavanderiaelcobre.ui.theme.Brand400
 import com.elcobre.lavanderiaelcobre.ui.theme.Brand500
 import com.elcobre.lavanderiaelcobre.ui.theme.Brand700
@@ -1561,11 +1562,8 @@ private fun ChequeoForm(
 
         Spacer(Modifier.height(12.dp))
         SelectorFotos(accent, fotos, haptic, enabled = !guardando)
-        Text(
-            "Fotografía solo el vehículo. Evita rostros, documentos y objetos personales ajenos a la inspección.",
-            style = MaterialTheme.typography.bodySmall,
-            color = brandMutedColor(),
-        )
+        Spacer(Modifier.height(8.dp))
+        RecordatorioPrivacidadFotos()
 
         Spacer(Modifier.height(12.dp))
         ObservacionesChequeo(observaciones, editarDatos) { observaciones = it }

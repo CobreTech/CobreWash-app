@@ -72,6 +72,7 @@ import com.elcobre.lavanderiaelcobre.data.model.Operario
 import com.elcobre.lavanderiaelcobre.data.model.Sesion
 import com.elcobre.lavanderiaelcobre.data.model.TurnoPlanta
 import com.elcobre.lavanderiaelcobre.ui.components.BrandCtaGradient
+import com.elcobre.lavanderiaelcobre.ui.components.AvisoPrivacidad
 import com.elcobre.lavanderiaelcobre.ui.components.CobreBackground
 import com.elcobre.lavanderiaelcobre.ui.components.CobreIcons
 import com.elcobre.lavanderiaelcobre.ui.components.GlassCard
@@ -575,7 +576,8 @@ private fun TurnoDetectadoBanner(turno: TurnoPlanta) {
 
 @Composable
 private fun LoginFooter() {
-    com.elcobre.lavanderiaelcobre.ui.components.AvisoPrivacidad()
+    AvisoPrivacidad()
+    Spacer(Modifier.height(12.dp))
     Text(
         "Lavandería El Cobre · Gestión interna",
         style = MaterialTheme.typography.labelSmall,

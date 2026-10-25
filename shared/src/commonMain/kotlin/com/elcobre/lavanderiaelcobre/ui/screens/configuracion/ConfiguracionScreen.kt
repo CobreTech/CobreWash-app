@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import com.elcobre.lavanderiaelcobre.data.model.Operario
 import com.elcobre.lavanderiaelcobre.data.model.TurnoPlanta
 import com.elcobre.lavanderiaelcobre.ui.components.BrandCtaGradient
+import com.elcobre.lavanderiaelcobre.ui.components.AvisoPrivacidad
 import com.elcobre.lavanderiaelcobre.ui.components.CobreBackground
 import com.elcobre.lavanderiaelcobre.ui.components.CobreIcons
 import com.elcobre.lavanderiaelcobre.ui.components.GlassCard
@@ -90,7 +91,8 @@ fun ConfiguracionScreen(
             Spacer(Modifier.height(20.dp))
 
             CuentaCard(operario)
-            com.elcobre.lavanderiaelcobre.ui.components.AvisoPrivacidad()
+            Spacer(Modifier.height(16.dp))
+            AvisoPrivacidad(mostrarTarjeta = true)
             Spacer(Modifier.height(16.dp))
             AparienciaCard(modoTema = modoTema, onCambiarTema = onCambiarTema)
             Spacer(Modifier.height(16.dp))
